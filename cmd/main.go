@@ -47,7 +47,7 @@ func main() {
 	logopts := zap.Options{Development: true}
 	flag.StringVar(&opts.MetricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&opts.ProbeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.StringVar(&opts.LeaderElectionNamespace, "leader-elect-namespace", os.Getenv("NAMESPACE"), "The namespace in which to elect a leader. Defaults to the namespace of the controller object or the NAMESPACE environment variable.")
+	flag.StringVar(&opts.Namespace, "namespace", os.Getenv("NAMESPACE"), "The namespace in which to operate. Defaults to the namespace of the controller object or the NAMESPACE environment variable.")
 	flag.DurationVar(&opts.LeaderElectionLeaseDuration, "leader-lease-duration", 10*time.Second, "The duration that non-leader candidates will wait to force acquire leadership. This is measured against time of last observed ack.")
 	flag.DurationVar(&opts.LeaderElectionRenewDeadline, "leader-renew-deadline", 10*time.Second, "The duration that the acting leader will retry refreshing leadership before giving up.")
 	flag.DurationVar(&opts.LeaderElectionRetryPeriod, "leader-retry-period", 2*time.Second, "The duration the LeaderElector clients should wait between tries of actions.")

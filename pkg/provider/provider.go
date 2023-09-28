@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -58,8 +59,8 @@ type Options struct {
 	ProbeAddr string
 	// ShutdownTimeout is the timeout for shutting down the provider.
 	ShutdownTimeout time.Duration
-	// LeaderElectionNamespace is the namespace to use for leader election.
-	LeaderElectionNamespace string
+	// Namespace is the namespace to use for leader election and storage.
+	Namespace string
 	// LeaderElectionLeaseDuration is the duration of the leader election lease.
 	LeaderElectionLeaseDuration time.Duration
 	// LeaderElectionRenewDeadline is the duration of the leader election lease renewal deadline.
@@ -77,6 +78,8 @@ type Provider struct {
 	consensus *Consensus
 	leaders   *leaderelection.LeaderElector
 	errc      chan error
+	subs      map[string]Subscription
+	subsmu    sync.Mutex
 	stop      context.CancelFunc
 	log       logr.Logger
 }
@@ -85,6 +88,7 @@ type Provider struct {
 func New(options Options) (*Provider, error) {
 	p := &Provider{
 		Options: options,
+		subs:    make(map[string]Subscription),
 		errc:    make(chan error, 1),
 		log:     ctrl.Log.WithName("storage-provider"),
 	}
@@ -95,9 +99,9 @@ func New(options Options) (*Provider, error) {
 		return nil, fmt.Errorf("resolve listen address: %w", err)
 	}
 	p.lport = uint16(laddr.Port)
-	if p.LeaderElectionNamespace == "" {
+	if p.Namespace == "" {
 		var err error
-		p.LeaderElectionNamespace, err = getInClusterNamespace()
+		p.Namespace, err = getInClusterNamespace()
 		if err != nil {
 			return nil, fmt.Errorf("get in-cluster namespace: %w", err)
 		}
@@ -138,7 +142,7 @@ func New(options Options) (*Provider, error) {
 	// Create the leader election lock.
 	rlock, err := resourcelock.New(
 		"leases",
-		options.LeaderElectionNamespace,
+		options.Namespace,
 		LeaderElectionID,
 		corev1client,
 		coordinationClient,
@@ -222,7 +226,16 @@ func (p *Provider) Bootstrap(context.Context) error {
 
 // Status returns the status of the storage provider.
 func (p *Provider) Status() *v1.StorageStatus {
-	return &v1.StorageStatus{}
+	return &v1.StorageStatus{
+		IsWritable: p.leaders.IsLeader(),
+		ClusterStatus: func() v1.ClusterStatus {
+			if p.leaders.IsLeader() {
+				return v1.ClusterStatus_CLUSTER_LEADER
+			}
+			return v1.ClusterStatus_CLUSTER_VOTER
+		}(),
+		Peers: []*v1.StoragePeer{},
+	}
 }
 
 // ListenPort should return the TCP port that the storage provider is listening on.
@@ -232,6 +245,12 @@ func (p *Provider) ListenPort() uint16 {
 
 // Close closes the provider.
 func (p *Provider) Close() error {
+	p.subsmu.Lock()
+	defer p.subsmu.Unlock()
+	for subID, sub := range p.subs {
+		sub.cancel()
+		delete(p.subs, subID)
+	}
 	p.stop()
 	return nil
 }
