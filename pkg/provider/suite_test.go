@@ -57,6 +57,7 @@ func setupTestProvider(ctx context.Context, t *testing.T) storage.Provider {
 	t.Log("Creating manager")
 	mgr, err := manager.NewFromConfig(cfg, manager.Options{
 		ShutdownTimeout: time.Second * 15,
+		DisableCache:    true,
 	})
 	if err != nil {
 		t.Fatal("Failed to create manager", err)

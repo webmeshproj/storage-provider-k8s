@@ -20,10 +20,12 @@ package manager
 import (
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	corescheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -43,6 +45,9 @@ type Options struct {
 	ProbeAddr string
 	// ShutdownTimeout is the timeout for shutting down the manager.
 	ShutdownTimeout time.Duration
+	// DisableCache disables the controller-runtime cache. This is primarily
+	// used for testing.
+	DisableCache bool
 }
 
 // New returns a new controller-runtime manager.
@@ -57,7 +62,7 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+	mgropts := ctrl.Options{
 		Scheme:                  scheme,
 		GracefulShutdownTimeout: &opts.ShutdownTimeout,
 		HealthProbeBindAddress:  opts.ProbeAddr,
@@ -69,7 +74,16 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 			// Leader election is handled by the provider.
 			NeedLeaderElection: &[]bool{false}[0],
 		},
-	})
+	}
+	if opts.DisableCache {
+		mgropts.Client = client.Options{
+			Scheme: scheme,
+			Cache: &client.CacheOptions{
+				DisableFor: []client.Object{&corev1.Secret{}},
+			},
+		}
+	}
+	mgr, err := ctrl.NewManager(cfg, mgropts)
 	if err != nil {
 		return nil, err
 	}

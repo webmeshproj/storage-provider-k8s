@@ -49,7 +49,7 @@ const (
 // Storage is the storage interface for the storage provider.
 type Storage struct {
 	*Provider
-	mu sync.RWMutex
+	mu sync.Mutex
 }
 
 // DataItem is a single item of data.
@@ -73,11 +73,12 @@ func (d DataItem) Marshal() ([]byte, error) {
 
 // GetValue returns the value of a key.
 func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
-	st.mu.RLock()
-	defer st.mu.RUnlock()
+	st.mu.Lock()
+	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(key)) {
 		return nil, storage.ErrInvalidKey
 	}
+	st.log.V(1).Info("Getting value", "key", string(key))
 	bucket := st.bucketForKey(key)
 	var secret corev1.Secret
 	err := st.mgr.GetClient().Get(ctx, client.ObjectKey{
@@ -107,7 +108,7 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 				st.mu.Lock()
 				defer st.mu.Unlock()
 				delete(secret.Data, keyHash)
-				err := st.patchBucket(ctx, &secret)
+				err := st.patchBucket(ctx, &secret, st.rawBucketForKey(key))
 				if err != nil {
 					st.log.Error(err, "Failed to delete expired key", "key", string(key))
 				}
@@ -131,6 +132,7 @@ func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Dur
 	if !st.leaders.IsLeader() {
 		return storage.ErrNotLeader
 	}
+	st.log.V(1).Info("Putting key", "key", string(key))
 	bucket := st.bucketForKey(key)
 	var secret corev1.Secret
 	err := st.mgr.GetClient().Get(ctx, client.ObjectKey{
@@ -146,7 +148,7 @@ func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Dur
 		secret.Namespace = st.Namespace
 		secret.Labels = map[string]string{
 			MeshStorageLabel: "true",
-			BucketLabel:      bucket,
+			BucketLabel:      st.rawBucketForKey(key),
 		}
 		secret.Data = map[string][]byte{}
 	}
@@ -166,9 +168,8 @@ func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Dur
 	if secret.Data == nil {
 		secret.Data = map[string][]byte{}
 	}
-	keyHash := hashKey(key)
-	secret.Data[keyHash] = data
-	err = st.patchBucket(ctx, &secret)
+	secret.Data[hashKey(key)] = data
+	err = st.patchBucket(ctx, &secret, st.rawBucketForKey(key))
 	if err != nil {
 		return err
 	}
@@ -185,6 +186,7 @@ func (st *Storage) Delete(ctx context.Context, key []byte) error {
 	if !st.leaders.IsLeader() {
 		return storage.ErrNotLeader
 	}
+	st.log.V(1).Info("Deleting key", "key", string(key))
 	bucket := st.bucketForKey(key)
 	var secret corev1.Secret
 	err := st.mgr.GetClient().Get(ctx, client.ObjectKey{
@@ -198,16 +200,17 @@ func (st *Storage) Delete(ctx context.Context, key []byte) error {
 		return err
 	}
 	delete(secret.Data, hashKey(key))
-	return st.patchBucket(ctx, &secret)
+	return st.patchBucket(ctx, &secret, st.rawBucketForKey(key))
 }
 
 // ListKeys returns all keys with a given prefix.
 func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error) {
-	st.mu.RLock()
-	defer st.mu.RUnlock()
+	st.mu.Lock()
+	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(prefix)) {
 		return nil, storage.ErrInvalidPrefix
 	}
+	st.log.V(1).Info("Listing keys", "prefix", string(prefix))
 	buckets, err := st.bucketsForPrefix(ctx, prefix)
 	if err != nil {
 		return nil, err
@@ -239,19 +242,21 @@ func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error
 // that the iterator not attempt any write operations as this will cause
 // a deadlock. The iteration will stop if the iterator returns an error.
 func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.PrefixIterator) error {
-	st.mu.RLock()
-	defer st.mu.RUnlock()
+	st.mu.Lock()
+	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(prefix)) {
 		return storage.ErrInvalidPrefix
 	}
+	st.log.V(1).Info("Iterating prefix", "prefix", string(prefix))
 	buckets, err := st.bucketsForPrefix(ctx, prefix)
 	if err != nil {
 		return err
 	}
+	st.log.V(1).Info("Got buckets for prefix", "buckets", len(buckets))
 	// Map of index to keys to delete
-	toDelete := map[int][]string{}
-	for idx, bucket := range buckets {
-		for k, val := range bucket.Data {
+	for _, bucket := range buckets {
+		st.log.V(1).Info("Iterating bucket", "bucket", bucket.Name, "bucket-data", bucket.Data)
+		for _, val := range bucket.Data {
 			var item DataItem
 			err := item.Unmarshal(val)
 			if err != nil {
@@ -261,32 +266,12 @@ func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.Pre
 				continue
 			}
 			if !item.Expiry.IsZero() && item.Expiry.Before(time.Now().UTC()) {
-				// Defer a delete if we are the leader
-				if st.leaders.IsLeader() {
-					toDelete[idx] = append(toDelete[idx], k)
-				}
 				continue
 			}
 			if err := fn(item.Key, item.Value); err != nil {
 				return err
 			}
 		}
-	}
-	if st.leaders.IsLeader() && len(toDelete) > 0 {
-		// Deferring the delete here is safe as we are the leader.
-		go func() {
-			st.mu.Lock()
-			defer st.mu.Unlock()
-			for idx, keys := range toDelete {
-				for _, key := range keys {
-					delete(buckets[idx].Data, key)
-				}
-				err := st.patchBucket(ctx, buckets[idx])
-				if err != nil {
-					st.log.Error(err, "Failed to delete expired keys", "keys", keys)
-				}
-			}
-		}()
 	}
 	return nil
 }
@@ -310,12 +295,29 @@ func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.Subs
 	return cancel, nil
 }
 
-func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret) error {
+func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret, rawBucketName string) error {
+	if len(bucket.Data) == 0 {
+		// Delete the bucket
+		st.log.V(1).Info("Deleting bucket", "bucket", bucket.Name)
+		err := st.mgr.GetClient().Delete(ctx, bucket)
+		if err != nil && client.IgnoreNotFound(err) != nil {
+			return fmt.Errorf("delete bucket secret: %w", err)
+		}
+	}
+	bucket.ObjectMeta.ResourceVersion = ""
+	bucket.ObjectMeta.UID = ""
+	bucket.ObjectMeta.Generation = 0
+	bucket.ObjectMeta.CreationTimestamp = metav1.Time{}
 	bucket.TypeMeta = metav1.TypeMeta{
 		Kind:       "Secret",
 		APIVersion: "v1",
 	}
+	bucket.Labels = map[string]string{
+		MeshStorageLabel: "true",
+		BucketLabel:      rawBucketName,
+	}
 	bucket.ObjectMeta.ManagedFields = nil
+	st.log.V(1).Info("Patching bucket", "bucket", bucket.Name)
 	err := st.mgr.GetClient().Patch(ctx, bucket, client.Apply, client.ForceOwnership, client.FieldOwner(FieldOwner))
 	if err != nil {
 		return fmt.Errorf("patch bucket secret: %w", err)
@@ -334,12 +336,20 @@ func (st *Storage) bucketsForPrefix(ctx context.Context, prefix []byte) ([]*core
 		return nil, err
 	}
 	var buckets []*corev1.Secret
-	for _, bucket := range bucketList.Items {
+	for _, b := range bucketList.Items {
+		bucket := b
 		if len(prefix) == 0 {
 			buckets = append(buckets, &bucket)
 			continue
 		}
-		if strings.HasPrefix(bucket.Labels[BucketLabel], string(prefix)) {
+		prefixRaw := st.rawBucketForKey(prefix)
+		st.log.V(1).Info("Checking if bucket matches prefix",
+			"bucket", bucket.Name,
+			"bucket-labels", bucket.Labels,
+			"raw-prefix", prefixRaw,
+			"prefix", string(prefix))
+		if strings.HasPrefix(bucket.Labels[BucketLabel], prefixRaw) {
+			st.log.V(1).Info("Bucket matches prefix", "bucket", bucket.Name)
 			buckets = append(buckets, &bucket)
 		}
 	}
@@ -347,6 +357,10 @@ func (st *Storage) bucketsForPrefix(ctx context.Context, prefix []byte) ([]*core
 }
 
 func (st *Storage) bucketForKey(key []byte) string {
+	return strings.ToLower(st.rawBucketForKey(key))
+}
+
+func (st *Storage) rawBucketForKey(key []byte) string {
 	// We create buckets according to the largest part of the prefix.
 	k := string(key)
 	spl := strings.Split(k, "/")
@@ -354,9 +368,9 @@ func (st *Storage) bucketForKey(key []byte) string {
 		return ""
 	}
 	if len(spl) == 1 {
-		return strings.ToLower(spl[0])
+		return spl[0]
 	}
-	return strings.ToLower(strings.Join(spl[:len(spl)-1], "/"))
+	return strings.Join(spl[:len(spl)-1], "_")
 }
 
 func hashKey(key []byte) string {

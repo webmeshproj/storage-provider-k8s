@@ -78,7 +78,7 @@ func (p *Provider) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result
 			continue
 		default:
 		}
-		for k, v := range secret.Data {
+		for _, v := range secret.Data {
 			var item DataItem
 			err := item.Unmarshal(v)
 			if err != nil {
@@ -88,13 +88,24 @@ func (p *Provider) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result
 			if !bytes.HasPrefix(item.Key, sub.prefix) {
 				continue
 			}
-			// Check if we have seen this key before.
-			if val, ok := sub.seen[k]; ok && bytes.Equal(val, item.Value) {
+			// Check if we have seen this key and its value before.
+			if val, ok := sub.seen[string(item.Key)]; ok && bytes.Equal(val, item.Value) {
 				continue
 			}
-			sub.seen[k] = item.Value
+			sub.seen[string(item.Key)] = item.Value
 			// Notify the subscriber.
 			sub.fn(item.Key, item.Value)
+		}
+		// Iterate on seen to see if any values were deleted from the bucket.
+		for key := range sub.seen {
+			if !bytes.HasPrefix([]byte(key), sub.prefix) {
+				continue
+			}
+			if _, ok := secret.Data[hashKey([]byte(key))]; !ok {
+				// Notify the subscriber.
+				sub.fn([]byte(key), nil)
+				delete(sub.seen, key)
+			}
 		}
 	}
 	return ctrl.Result{}, nil

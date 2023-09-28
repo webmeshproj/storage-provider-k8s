@@ -230,6 +230,10 @@ func (c *Consensus) getPeersSecret(ctx context.Context) (*corev1.Secret, error) 
 }
 
 func (c *Consensus) patchPeers(ctx context.Context, secret *corev1.Secret) error {
+	secret.ObjectMeta.ResourceVersion = ""
+	secret.ObjectMeta.UID = ""
+	secret.ObjectMeta.Generation = 0
+	secret.ObjectMeta.CreationTimestamp = metav1.Time{}
 	secret.TypeMeta = metav1.TypeMeta{
 		Kind:       "Secret",
 		APIVersion: "v1",
