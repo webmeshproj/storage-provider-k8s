@@ -20,15 +20,28 @@ package provider
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// Ensure we satisfy the resource recorder interface.
+var _ resourcelock.EventRecorder = &Provider{}
+
+// Ensure we satisfy the reconcile interface.
+var _ reconcile.Reconciler = &Provider{}
+
+// Eventf implements the resource recorder and is used to track changes to the leader
+// election lease.
+func (p *Provider) Eventf(obj runtime.Object, eventType, reason, message string, args ...interface{}) {
+}
+
 // Reconcile reconciles the given request. This is used to notify subscribers
 // of changes to the given object.
-func (p *Provider) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (p *Provider) Reconcile(ctx context.Context, req reconcile.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
