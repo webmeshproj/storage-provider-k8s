@@ -44,6 +44,8 @@ const (
 	BucketLabel = "webmesh.io/storage-bucket"
 	// FieldOwner is the field used to identify the owner of a secret.
 	FieldOwner = "storage.webmesh.io"
+	// StorageTraceVLevel is the log level for storage trace logs.
+	StorageTraceVLevel = 2
 )
 
 // Storage is the storage interface for the storage provider.
@@ -71,6 +73,12 @@ func (d DataItem) Marshal() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
+func (st *Storage) trace(ctx context.Context, msg string, args ...interface{}) {
+	st.log.V(StorageTraceVLevel).WithName("storage-data").Info(
+		msg, append(args, "namespace", st.Namespace, "node-id", st.NodeID)...,
+	)
+}
+
 // GetValue returns the value of a key.
 func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 	st.mu.Lock()
@@ -78,7 +86,7 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 	if !storageutil.IsValidKey(string(key)) {
 		return nil, storage.ErrInvalidKey
 	}
-	st.log.V(1).Info("Getting value", "key", string(key))
+	st.trace(ctx, "Getting value", "key", string(key))
 	bucket := st.bucketForKey(key)
 	var secret corev1.Secret
 	err := st.mgr.GetClient().Get(ctx, client.ObjectKey{
@@ -132,7 +140,7 @@ func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Dur
 	if !st.leaders.IsLeader() {
 		return storage.ErrNotLeader
 	}
-	st.log.V(1).Info("Putting key", "key", string(key))
+	st.trace(ctx, "Putting key", "key", string(key))
 	bucket := st.bucketForKey(key)
 	var secret corev1.Secret
 	err := st.mgr.GetClient().Get(ctx, client.ObjectKey{
@@ -186,7 +194,7 @@ func (st *Storage) Delete(ctx context.Context, key []byte) error {
 	if !st.leaders.IsLeader() {
 		return storage.ErrNotLeader
 	}
-	st.log.V(1).Info("Deleting key", "key", string(key))
+	st.trace(ctx, "Deleting key", "key", string(key))
 	bucket := st.bucketForKey(key)
 	var secret corev1.Secret
 	err := st.mgr.GetClient().Get(ctx, client.ObjectKey{
@@ -210,7 +218,7 @@ func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error
 	if !storageutil.IsValidKey(string(prefix)) {
 		return nil, storage.ErrInvalidPrefix
 	}
-	st.log.V(1).Info("Listing keys", "prefix", string(prefix))
+	st.trace(ctx, "Listing keys", "prefix", string(prefix))
 	buckets, err := st.bucketsForPrefix(ctx, prefix)
 	if err != nil {
 		return nil, err
@@ -247,15 +255,15 @@ func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.Pre
 	if !storageutil.IsValidKey(string(prefix)) {
 		return storage.ErrInvalidPrefix
 	}
-	st.log.V(1).Info("Iterating prefix", "prefix", string(prefix))
+	st.trace(ctx, "Iterating prefix", "prefix", string(prefix))
 	buckets, err := st.bucketsForPrefix(ctx, prefix)
 	if err != nil {
 		return err
 	}
-	st.log.V(1).Info("Got buckets for prefix", "buckets", len(buckets))
+	st.trace(ctx, "Got buckets for prefix", "buckets", len(buckets))
 	// Map of index to keys to delete
 	for _, bucket := range buckets {
-		st.log.V(1).Info("Iterating bucket", "bucket", bucket.Name, "bucket-data", bucket.Data)
+		st.trace(ctx, "Iterating bucket", "bucket", bucket.Name, "bucket-data", bucket.Data)
 		for _, val := range bucket.Data {
 			var item DataItem
 			err := item.Unmarshal(val)
@@ -284,6 +292,7 @@ func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.Subs
 	if !storageutil.IsValidKey(string(prefix)) {
 		return nil, storage.ErrInvalidPrefix
 	}
+	st.trace(ctx, "Subscribing to prefix", "prefix", string(prefix))
 	ctx, cancel := context.WithCancel(ctx)
 	st.subs[uuid.NewString()] = Subscription{
 		prefix: prefix,
@@ -298,7 +307,7 @@ func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.Subs
 func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret, rawBucketName string) error {
 	if len(bucket.Data) == 0 {
 		// Delete the bucket
-		st.log.V(1).Info("Deleting bucket", "bucket", bucket.Name)
+		st.trace(ctx, "Deleting bucket", "bucket", bucket.Name)
 		err := st.mgr.GetClient().Delete(ctx, bucket)
 		if err != nil && client.IgnoreNotFound(err) != nil {
 			return fmt.Errorf("delete bucket secret: %w", err)
@@ -317,7 +326,7 @@ func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret, rawBu
 		BucketLabel:      rawBucketName,
 	}
 	bucket.ObjectMeta.ManagedFields = nil
-	st.log.V(1).Info("Patching bucket", "bucket", bucket.Name)
+	st.trace(ctx, "Patching bucket", "bucket", bucket.Name)
 	err := st.mgr.GetClient().Patch(ctx, bucket, client.Apply, client.ForceOwnership, client.FieldOwner(FieldOwner))
 	if err != nil {
 		return fmt.Errorf("patch bucket secret: %w", err)
@@ -343,13 +352,13 @@ func (st *Storage) bucketsForPrefix(ctx context.Context, prefix []byte) ([]*core
 			continue
 		}
 		prefixRaw := st.rawBucketForKey(prefix)
-		st.log.V(1).Info("Checking if bucket matches prefix",
+		st.trace(ctx, "Checking if bucket matches prefix",
 			"bucket", bucket.Name,
 			"bucket-labels", bucket.Labels,
 			"raw-prefix", prefixRaw,
 			"prefix", string(prefix))
 		if strings.HasPrefix(bucket.Labels[BucketLabel], prefixRaw) {
-			st.log.V(1).Info("Bucket matches prefix", "bucket", bucket.Name)
+			st.trace(ctx, "Bucket matches prefix", "bucket", bucket.Name)
 			buckets = append(buckets, &bucket)
 		}
 	}

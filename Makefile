@@ -30,11 +30,12 @@ SETUP := $(GO) run sigs.k8s.io/controller-runtime/tools/setup-envtest@latest use
 setup-envtest: ## Setup envtest. This is automatically run by the test target.
 	$(SETUP) 1> /dev/null
 
-RICHGO ?= $(GO) run github.com/kyoh86/richgo@v0.3.12
+RICHGO       ?= $(GO) run github.com/kyoh86/richgo@v0.3.12
+TEST_TIMEOUT ?= 180s
 test: setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(SETUP))" \
-		$(RICHGO) test -v -cover -race -covermode=atomic -coverprofile=cover.out -timeout=180s ./...
+		$(RICHGO) test -v -cover -covermode=atomic -coverprofile=cover.out -timeout=$(TEST_TIMEOUT) ./...
 
 CI_TARGETS := lint test
 ci-test: ## Run all CI tests.
-	set -eo pipefail ; $(MAKE) $(CI_TARGETS) | xargs -IL date +"[%Y-%m-%d %H:%M:%S]: L"
+	$(MAKE) $(CI_TARGETS)

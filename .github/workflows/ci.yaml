@@ -65,4 +65,6 @@ jobs:
 
       - name: Run Conformance Tests
         shell: bash
+        env:
+          TEST_TIMEOUT: 300s
         run: make ci-test

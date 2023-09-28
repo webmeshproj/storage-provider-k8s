@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -74,6 +75,7 @@ type Options struct {
 // Provider is the storage provider implementation for Kubernetes.
 type Provider struct {
 	Options
+	started   atomic.Bool
 	lport     uint16
 	mgr       manager.Manager
 	storage   *Storage
@@ -84,6 +86,7 @@ type Provider struct {
 	subsmu    sync.Mutex
 	stop      context.CancelFunc
 	log       logr.Logger
+	mu        sync.Mutex
 }
 
 // New creates a new Provider.
@@ -189,6 +192,12 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 
 // Start starts the provider.
 func (p *Provider) Start(ctx context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.started.Load() {
+		return storage.ErrStarted
+	}
+	defer p.started.Store(true)
 	ctx, p.stop = context.WithCancel(ctx)
 	// Start the controller manager
 	go func() {
@@ -227,6 +236,11 @@ func (p *Provider) Consensus() storage.Consensus {
 
 // Bootstrap should bootstrap the provider for first-time usage.
 func (p *Provider) Bootstrap(ctx context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.started.Load() {
+		return storage.ErrClosed
+	}
 	// We create the peers secret on first boot.
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -239,6 +253,7 @@ func (p *Provider) Bootstrap(ctx context.Context) error {
 		Address:       fmt.Sprintf("%s:%d", p.NodeID, p.lport),
 		ClusterStatus: v1.ClusterStatus_CLUSTER_LEADER,
 	}}
+	p.log.Info("Bootstrapping storage provider", "self", self)
 	data, err := self.MarshalJSON()
 	if err != nil {
 		return fmt.Errorf("marshal self: %w", err)
@@ -251,9 +266,41 @@ func (p *Provider) Bootstrap(ctx context.Context) error {
 
 // Status returns the status of the storage provider.
 func (p *Provider) Status() *v1.StorageStatus {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.started.Load() {
+		// This is a special case currently where we just return ourself.
+		return &v1.StorageStatus{
+			IsWritable:    false,
+			ClusterStatus: v1.ClusterStatus_CLUSTER_NODE,
+			Peers: []*v1.StoragePeer{
+				{
+					Id:            p.NodeID,
+					Address:       p.ListenAddr,
+					ClusterStatus: v1.ClusterStatus_CLUSTER_NODE,
+				},
+			},
+			Message: storage.ErrClosed.Error(),
+		}
+	}
 	peers, err := p.consensus.GetPeers(context.Background())
 	if err != nil {
 		p.log.Error(err, "Failed to get peers")
+	}
+	// If the peer list doesn't contain us its the same as the special case above.
+	if !p.consensus.containsPeer(peers, p.NodeID) {
+		return &v1.StorageStatus{
+			IsWritable:    false,
+			ClusterStatus: v1.ClusterStatus_CLUSTER_NODE,
+			Peers: []*v1.StoragePeer{
+				{
+					Id:            p.NodeID,
+					Address:       p.ListenAddr,
+					ClusterStatus: v1.ClusterStatus_CLUSTER_NODE,
+				},
+			},
+			Message: storage.ErrNotVoter.Error(),
+		}
 	}
 	return &v1.StorageStatus{
 		IsWritable: p.leaders.IsLeader(),
@@ -280,6 +327,11 @@ func (p *Provider) ListenPort() uint16 {
 
 // Close closes the provider.
 func (p *Provider) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.started.Load() {
+		return storage.ErrClosed
+	}
 	p.subsmu.Lock()
 	defer p.subsmu.Unlock()
 	for subID, sub := range p.subs {

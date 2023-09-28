@@ -87,11 +87,13 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		return nil, err
-	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		return nil, err
+	if opts.ProbeAddr != "" && opts.ProbeAddr != "0" {
+		if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+			return nil, err
+		}
+		if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+			return nil, err
+		}
 	}
 	return mgr, nil
 }

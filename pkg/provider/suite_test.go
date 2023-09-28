@@ -18,10 +18,10 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/testutil"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -33,50 +33,54 @@ import (
 )
 
 func TestProviderConformance(t *testing.T) {
-	provider := setupTestProvider(context.Background(), t)
-	testutil.TestSingleNodeProviderConformance(context.Background(), t, provider)
+	testutil.TestStorageProviderConformance(context.Background(), t, setupTestProviders)
 }
 
-func setupTestProvider(ctx context.Context, t *testing.T) storage.Provider {
+func setupTestProviders(t *testing.T, count int) []storage.Provider {
 	t.Log("Starting test environment")
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	testenv := envtest.Environment{
-		ControlPlaneStartTimeout: time.Second * 15,
-		ControlPlaneStopTimeout:  time.Second * 15,
+		ControlPlaneStartTimeout: time.Second * 30,
+		ControlPlaneStopTimeout:  time.Second * 3,
 	}
 	cfg, err := testenv.Start()
 	if err != nil {
 		t.Fatal("Failed to start test environment", err)
 	}
 	t.Cleanup(func() {
+		t.Log("Stopping test environment")
 		err := testenv.Stop()
 		if err != nil {
 			t.Log("Failed to stop test environment", err)
 		}
 	})
-	t.Log("Creating manager")
-	mgr, err := manager.NewFromConfig(cfg, manager.Options{
-		ShutdownTimeout: time.Second * 15,
-		DisableCache:    true,
-	})
-	if err != nil {
-		t.Fatal("Failed to create manager", err)
+	var providers []storage.Provider
+	for i := 0; i < count; i++ {
+		t.Log("Creating new controller manager", i)
+		mgr, err := manager.NewFromConfig(cfg, manager.Options{
+			ShutdownTimeout: time.Second * 3,
+			DisableCache:    true,
+			WebhookPort:     0,
+			MetricsAddr:     "0",
+			ProbeAddr:       "0",
+		})
+		if err != nil {
+			t.Fatal("Failed to create manager", i, err)
+		}
+		nodeID := fmt.Sprintf("test-node-%d", i)
+		t.Log("Creating new provider", i, "ID:", nodeID)
+		provider, err := NewWithManager(mgr, Options{
+			NodeID:                      nodeID,
+			ListenAddr:                  fmt.Sprintf("[::]:%d", 9080+i),
+			Namespace:                   "default",
+			LeaderElectionLeaseDuration: time.Second * 3,
+			LeaderElectionRenewDeadline: time.Second * 1,
+			LeaderElectionRetryPeriod:   time.Millisecond * 500,
+		})
+		if err != nil {
+			t.Fatal("Failed to create provider", i, err)
+		}
+		providers = append(providers, provider)
 	}
-	provider, err := NewWithManager(mgr, Options{
-		NodeID:                      uuid.NewString(),
-		ListenAddr:                  "[::]:9443",
-		Namespace:                   "default",
-		LeaderElectionLeaseDuration: time.Second * 5,
-		LeaderElectionRenewDeadline: time.Second * 3,
-		LeaderElectionRetryPeriod:   time.Second * 1,
-	})
-	if err != nil {
-		t.Fatal("Failed to create provider", err)
-	}
-	t.Log("Starting provider")
-	err = provider.Start(context.Background())
-	if err != nil {
-		t.Fatal("Failed to start provider", err)
-	}
-	return provider
+	return providers
 }
