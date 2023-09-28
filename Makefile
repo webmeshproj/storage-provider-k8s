@@ -37,5 +37,8 @@ test: setup-envtest ## Run tests.
 		$(RICHGO) test -v -cover -covermode=atomic -coverprofile=cover.out -timeout=$(TEST_TIMEOUT) ./...
 
 CI_TARGETS := lint test
+ifeq ($(CI),true)
+	CI_TARGETS := test
+endif
 ci-test: ## Run all CI tests.
 	$(MAKE) $(CI_TARGETS)
