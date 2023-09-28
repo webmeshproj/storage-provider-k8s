@@ -88,8 +88,27 @@ type Provider struct {
 
 // New creates a new Provider.
 func New(options Options) (*Provider, error) {
+	laddr, err := net.ResolveTCPAddr("tcp", options.ListenAddr)
+	if err != nil {
+		return nil, fmt.Errorf("resolve listen address: %w", err)
+	}
+	mgr, err := manager.New(manager.Options{
+		WebhookPort:     laddr.Port,
+		MetricsAddr:     options.MetricsAddr,
+		ProbeAddr:       options.ProbeAddr,
+		ShutdownTimeout: options.ShutdownTimeout,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create controller manager: %w", err)
+	}
+	return NewWithManager(mgr, options)
+}
+
+// NewWithManager creates a new Provider with the given manager.
+func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 	p := &Provider{
 		Options: options,
+		mgr:     mgr,
 		subs:    make(map[string]Subscription),
 		errc:    make(chan error, 1),
 		log:     ctrl.Log.WithName("storage-provider"),
@@ -107,16 +126,6 @@ func New(options Options) (*Provider, error) {
 		if err != nil {
 			return nil, fmt.Errorf("get in-cluster namespace: %w", err)
 		}
-	}
-	// Create the controller manager.
-	p.mgr, err = manager.New(manager.Options{
-		WebhookPort:     laddr.Port,
-		MetricsAddr:     options.MetricsAddr,
-		ProbeAddr:       options.ProbeAddr,
-		ShutdownTimeout: options.ShutdownTimeout,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("create controller manager: %w", err)
 	}
 	// Register the reconciler with the manager.
 	err = ctrl.

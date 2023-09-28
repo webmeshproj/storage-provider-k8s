@@ -22,6 +22,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	corescheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -46,12 +47,17 @@ type Options struct {
 
 // New returns a new controller-runtime manager.
 func New(opts Options) (Manager, error) {
+	return NewFromConfig(ctrl.GetConfigOrDie(), opts)
+}
+
+// NewFromConfig creates a new manager from the given config.
+func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 	scheme := runtime.NewScheme()
 	err := corescheme.AddToScheme(scheme)
 	if err != nil {
 		return nil, err
 	}
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                  scheme,
 		GracefulShutdownTimeout: &opts.ShutdownTimeout,
 		HealthProbeBindAddress:  opts.ProbeAddr,
