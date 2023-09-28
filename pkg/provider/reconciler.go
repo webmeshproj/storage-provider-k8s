@@ -65,7 +65,7 @@ func (p *Provider) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result
 				continue
 			default:
 			}
-			if strings.HasPrefix(req.Name, sub.prefix) {
+			if strings.HasPrefix(req.Name, strings.ToLower(sub.prefix)) {
 				sub.fn([]byte(req.Name), nil)
 			}
 		}
@@ -79,22 +79,23 @@ func (p *Provider) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result
 			continue
 		default:
 		}
-		if strings.HasPrefix(secret.GetName(), sub.prefix) {
-			for k, v := range secret.Data {
-				var item DataItem
-				err := item.Unmarshal(v)
-				if err != nil {
-					p.log.Error(err, "Failed to unmarshal data item")
-					continue
-				}
-				// Check if we have seen this key before.
-				if val, ok := sub.seen[k]; ok && bytes.Equal(val, item.Value) {
-					continue
-				}
-				sub.seen[k] = item.Value
-				// Notify the subscriber.
-				sub.fn([]byte(k), item.Value)
+		for k, v := range secret.Data {
+			var item DataItem
+			err := item.Unmarshal(v)
+			if err != nil {
+				p.log.Error(err, "Failed to unmarshal data item")
+				continue
 			}
+			if !bytes.HasPrefix(item.Key, []byte(sub.prefix)) {
+				continue
+			}
+			// Check if we have seen this key before.
+			if val, ok := sub.seen[k]; ok && bytes.Equal(val, item.Value) {
+				continue
+			}
+			sub.seen[k] = item.Value
+			// Notify the subscriber.
+			sub.fn(item.Key, item.Value)
 		}
 	}
 	return ctrl.Result{}, nil

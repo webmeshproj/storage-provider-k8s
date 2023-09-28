@@ -33,7 +33,7 @@ setup-envtest: ## Setup envtest. This is automatically run by the test target.
 RICHGO ?= $(GO) run github.com/kyoh86/richgo@v0.3.12
 test: setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(SETUP))" \
-		$(RICHGO) test -v -cover -race -covermode=atomic -coverprofile=cover.out ./...
+		$(RICHGO) test -v -cover -race -covermode=atomic -coverprofile=cover.out -timeout=180s ./...
 
 CI_TARGETS := lint test
 ci-test: ## Run all CI tests.

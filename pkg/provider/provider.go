@@ -130,6 +130,7 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 	// Register the reconciler with the manager.
 	err = ctrl.
 		NewControllerManagedBy(p.mgr).
+		Named(p.NodeID).
 		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(p.enqueueObjectIfOwner)).
 		Complete(p)
 	if err != nil {
@@ -188,7 +189,7 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 
 // Start starts the provider.
 func (p *Provider) Start(ctx context.Context) error {
-	ctx, p.stop = context.WithCancel(ctrl.SetupSignalHandler())
+	ctx, p.stop = context.WithCancel(ctx)
 	// Start the controller manager
 	go func() {
 		p.log.Info("Starting controller manager and storage provider")

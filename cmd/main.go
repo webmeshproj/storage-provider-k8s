@@ -49,7 +49,7 @@ func main() {
 	flag.StringVar(&opts.ProbeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&opts.Namespace, "namespace", os.Getenv("NAMESPACE"), "The namespace in which to operate. Defaults to the namespace of the controller object or the NAMESPACE environment variable.")
 	flag.DurationVar(&opts.LeaderElectionLeaseDuration, "leader-lease-duration", 10*time.Second, "The duration that non-leader candidates will wait to force acquire leadership. This is measured against time of last observed ack.")
-	flag.DurationVar(&opts.LeaderElectionRenewDeadline, "leader-renew-deadline", 10*time.Second, "The duration that the acting leader will retry refreshing leadership before giving up.")
+	flag.DurationVar(&opts.LeaderElectionRenewDeadline, "leader-renew-deadline", 5*time.Second, "The duration that the acting leader will retry refreshing leadership before giving up.")
 	flag.DurationVar(&opts.LeaderElectionRetryPeriod, "leader-retry-period", 2*time.Second, "The duration the LeaderElector clients should wait between tries of actions.")
 	flag.DurationVar(&opts.ShutdownTimeout, "graceful-shutdown-timeout", time.Second*10, "The duration to wait for the controller to shutdown gracefully. If 0, the controller will not wait for graceful shutdown.")
 	logopts.BindFlags(flag.CommandLine)

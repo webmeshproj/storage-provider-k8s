@@ -29,6 +29,7 @@ import (
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/storageutil"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -52,6 +53,7 @@ type Storage struct {
 
 // DataItem is a single item of data.
 type DataItem struct {
+	Key    []byte
 	Value  []byte
 	Expiry time.Time
 }
@@ -99,16 +101,14 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 	if !item.Expiry.IsZero() && item.Expiry.Before(time.Now().UTC()) {
 		// Defer a delete if we are the leader.
 		if st.leaders.IsLeader() {
-			defer func() {
-				go func() {
-					st.mu.Lock()
-					defer st.mu.Unlock()
-					delete(secret.Data, string(key))
-					err := st.patchBucket(ctx, &secret)
-					if err != nil {
-						st.log.Error(err, "Failed to delete expired key", "key", string(key))
-					}
-				}()
+			go func() {
+				st.mu.Lock()
+				defer st.mu.Unlock()
+				delete(secret.Data, string(key))
+				err := st.patchBucket(ctx, &secret)
+				if err != nil {
+					st.log.Error(err, "Failed to delete expired key", "key", string(key))
+				}
 			}()
 		}
 		return nil, storage.NewKeyNotFoundError(key)
@@ -146,6 +146,7 @@ func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Dur
 		secret.Data = map[string][]byte{}
 	}
 	data, err := (DataItem{
+		Key:   key,
 		Value: value,
 		Expiry: func() time.Time {
 			if ttl == 0 {
@@ -175,7 +176,19 @@ func (st *Storage) Delete(ctx context.Context, key []byte) error {
 	if !st.leaders.IsLeader() {
 		return storage.ErrNotLeader
 	}
-	return storage.ErrNotImplemented
+	bucket := st.bucketForKey(key)
+	var secret corev1.Secret
+	err := st.mgr.GetClient().Get(ctx, client.ObjectKey{
+		Name:      bucket,
+		Namespace: st.Namespace,
+	}, &secret)
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			return storage.NewKeyNotFoundError(key)
+		}
+		return err
+	}
+	return nil
 }
 
 // ListKeys returns all keys with a given prefix.
@@ -206,7 +219,7 @@ func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error
 				// Leave deletions to other function calls.
 				continue
 			}
-			keys = append(keys, []byte(k))
+			keys = append(keys, item.Key)
 		}
 	}
 	return keys, nil
@@ -244,27 +257,25 @@ func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.Pre
 				}
 				continue
 			}
-			if err := fn([]byte(k), item.Value); err != nil {
+			if err := fn(item.Key, item.Value); err != nil {
 				return err
 			}
 		}
 	}
 	if st.leaders.IsLeader() && len(toDelete) > 0 {
 		// Deferring the delete here is safe as we are the leader.
-		defer func() {
-			go func() {
-				st.mu.Lock()
-				defer st.mu.Unlock()
-				for idx, keys := range toDelete {
-					for _, key := range keys {
-						delete(buckets[idx].Data, key)
-					}
-					err := st.patchBucket(ctx, buckets[idx])
-					if err != nil {
-						st.log.Error(err, "Failed to delete expired keys", "keys", keys)
-					}
+		go func() {
+			st.mu.Lock()
+			defer st.mu.Unlock()
+			for idx, keys := range toDelete {
+				for _, key := range keys {
+					delete(buckets[idx].Data, key)
 				}
-			}()
+				err := st.patchBucket(ctx, buckets[idx])
+				if err != nil {
+					st.log.Error(err, "Failed to delete expired keys", "keys", keys)
+				}
+			}
 		}()
 	}
 	return nil
@@ -290,6 +301,10 @@ func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.Subs
 }
 
 func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret) error {
+	bucket.TypeMeta = metav1.TypeMeta{
+		Kind:       "Secret",
+		APIVersion: "v1",
+	}
 	err := st.mgr.GetClient().Patch(ctx, bucket, client.Apply, client.ForceOwnership, client.FieldOwner(FieldOwner))
 	if err != nil {
 		return fmt.Errorf("patch bucket secret: %w", err)
@@ -327,5 +342,8 @@ func (st *Storage) bucketForKey(key []byte) string {
 	if len(spl) == 0 {
 		return ""
 	}
-	return strings.Join(spl[:len(spl)-1], "/")
+	if len(spl) == 1 {
+		return strings.ToLower(spl[0])
+	}
+	return strings.ToLower(strings.Join(spl[:len(spl)-1], "/"))
 }
