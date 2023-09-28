@@ -114,7 +114,8 @@ func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 	if !c.IsLeader() {
 		return storage.ErrNotLeader
 	}
-	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_VOTER
+	// There is only ever one writable peer.
+	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
 	// Get the current peers.
 	secret, err := c.getPeersSecret(ctx)
 	if err != nil {
