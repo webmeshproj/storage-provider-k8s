@@ -88,8 +88,8 @@ func New(options Options) (*Provider, error) {
 		errc:    make(chan error, 1),
 		log:     ctrl.Log.WithName("storage-provider"),
 	}
-	p.storage = &Storage{p}
-	p.consensus = &Consensus{p}
+	p.storage = &Storage{Provider: p}
+	p.consensus = &Consensus{Provider: p}
 	laddr, err := net.ResolveTCPAddr("tcp", options.ListenAddr)
 	if err != nil {
 		return nil, fmt.Errorf("resolve listen address: %w", err)

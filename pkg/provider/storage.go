@@ -18,6 +18,7 @@ package provider
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/webmeshproj/webmesh/pkg/storage"
@@ -28,10 +29,15 @@ import (
 var _ storage.MeshStorage = &Storage{}
 
 // Storage is the storage interface for the storage provider.
-type Storage struct{ *Provider }
+type Storage struct {
+	*Provider
+	mu sync.RWMutex
+}
 
 // GetValue returns the value of a key.
 func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
 	if !storageutil.IsValidKey(string(key)) {
 		return nil, storage.ErrInvalidKey
 	}
@@ -40,22 +46,34 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 
 // PutValue sets the value of a key. TTL is optional and can be set to 0.
 func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Duration) error {
+	st.mu.Lock()
+	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(key)) {
 		return storage.ErrInvalidKey
+	}
+	if !st.leaders.IsLeader() {
+		return storage.ErrNotLeader
 	}
 	return storage.ErrNotImplemented
 }
 
 // Delete removes a key.
 func (st *Storage) Delete(ctx context.Context, key []byte) error {
+	st.mu.Lock()
+	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(key)) {
 		return storage.ErrInvalidKey
+	}
+	if !st.leaders.IsLeader() {
+		return storage.ErrNotLeader
 	}
 	return storage.ErrNotImplemented
 }
 
 // ListKeys returns all keys with a given prefix.
 func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error) {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
 	if !storageutil.IsValidKey(string(prefix)) {
 		return nil, storage.ErrInvalidPrefix
 	}
@@ -66,6 +84,8 @@ func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error
 // that the iterator not attempt any write operations as this will cause
 // a deadlock. The iteration will stop if the iterator returns an error.
 func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.PrefixIterator) error {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
 	if !storageutil.IsValidKey(string(prefix)) {
 		return storage.ErrInvalidPrefix
 	}
@@ -75,6 +95,8 @@ func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.Pre
 // Subscribe will call the given function whenever a key with the given prefix is changed.
 // The returned function can be called to unsubscribe.
 func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.SubscribeFunc) (context.CancelFunc, error) {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
 	if !storageutil.IsValidKey(string(prefix)) {
 		return nil, storage.ErrInvalidPrefix
 	}
