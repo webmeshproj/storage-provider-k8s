@@ -26,10 +26,10 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/google/uuid"
 	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coordinationv1client "k8s.io/client-go/kubernetes/typed/coordination/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -51,6 +51,8 @@ var _ storage.Provider = &Provider{}
 
 // Options are the options for configuring the provider.
 type Options struct {
+	// NodeID is the ID of the node.
+	NodeID string
 	// ListenAddr is the address to bind the webhook server to.
 	ListenAddr string
 	// MetricsAddr is the address to bind the metrics endpoint to.
@@ -134,11 +136,6 @@ func New(options Options) (*Provider, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create coordinationv1 client: %w", err)
 	}
-	// Leader id, needs to be unique
-	id, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
 	// Create the leader election lock.
 	rlock, err := resourcelock.New(
 		"leases",
@@ -147,7 +144,7 @@ func New(options Options) (*Provider, error) {
 		corev1client,
 		coordinationClient,
 		resourcelock.ResourceLockConfig{
-			Identity:      id + "_" + uuid.NewString(),
+			Identity:      options.NodeID,
 			EventRecorder: p,
 		},
 	)
@@ -219,13 +216,35 @@ func (p *Provider) Consensus() storage.Consensus {
 }
 
 // Bootstrap should bootstrap the provider for first-time usage.
-func (p *Provider) Bootstrap(context.Context) error {
-	// No need to bootstrap on k8s.
-	return nil
+func (p *Provider) Bootstrap(ctx context.Context) error {
+	// We create the peers secret on first boot.
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      StoragePeersSecret,
+			Namespace: p.Namespace,
+		},
+	}
+	self := Peer{&v1.StoragePeer{
+		Id:            p.NodeID,
+		Address:       fmt.Sprintf("%s:%d", p.NodeID, p.lport),
+		ClusterStatus: v1.ClusterStatus_CLUSTER_LEADER,
+	}}
+	data, err := self.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("marshal self: %w", err)
+	}
+	secret.Data = map[string][]byte{
+		p.NodeID: data,
+	}
+	return p.consensus.patchPeers(ctx, secret)
 }
 
 // Status returns the status of the storage provider.
 func (p *Provider) Status() *v1.StorageStatus {
+	peers, err := p.consensus.GetPeers(context.Background())
+	if err != nil {
+		p.log.Error(err, "Failed to get peers")
+	}
 	return &v1.StorageStatus{
 		IsWritable: p.leaders.IsLeader(),
 		ClusterStatus: func() v1.ClusterStatus {
@@ -234,7 +253,13 @@ func (p *Provider) Status() *v1.StorageStatus {
 			}
 			return v1.ClusterStatus_CLUSTER_VOTER
 		}(),
-		Peers: []*v1.StoragePeer{},
+		Peers: peers,
+		Message: func() string {
+			if err != nil {
+				return err.Error()
+			}
+			return ""
+		}(),
 	}
 }
 

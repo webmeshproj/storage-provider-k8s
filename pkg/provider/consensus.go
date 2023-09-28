@@ -52,7 +52,8 @@ func (p *Peer) UnmarshalJSON(data []byte) error {
 // Consensus is the consensus interface for the storage provider.
 type Consensus struct {
 	*Provider
-	mu sync.RWMutex
+	self Peer
+	mu   sync.RWMutex
 }
 
 // IsLeader returns true if the node is the leader of the storage group.
@@ -69,14 +70,40 @@ func (c *Consensus) IsMember() bool {
 func (c *Consensus) GetPeers(ctx context.Context) ([]*v1.StoragePeer, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return nil, storage.ErrNotImplemented
+	peers, err := c.getPeers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get peers: %w", err)
+	}
+	var sps []*v1.StoragePeer
+	for _, p := range peers {
+		sps = append(sps, p.StoragePeer)
+	}
+	return sps, nil
 }
 
 // GetLeader returns the leader of the storage group.
 func (c *Consensus) GetLeader(ctx context.Context) (*v1.StoragePeer, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return nil, storage.ErrNotImplemented
+	if c.IsLeader() {
+		// Fast path return ourself if we have it stored.
+		if c.self.StoragePeer != nil {
+			return c.self.StoragePeer, nil
+		}
+	}
+	peers, err := c.getPeers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get peers: %w", err)
+	}
+	for _, p := range peers {
+		if c.leaders.GetLeader() == p.GetId() {
+			if c.IsLeader() {
+				c.self = p
+			}
+			return p.StoragePeer, nil
+		}
+	}
+	return nil, storage.ErrNoLeader
 }
 
 // AddVoter adds a voter to the consensus group.
@@ -86,7 +113,19 @@ func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 	if !c.IsLeader() {
 		return storage.ErrNotLeader
 	}
-	return storage.ErrNotImplemented
+	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_VOTER
+	// Get the current peers.
+	secret, err := c.getPeersSecret(ctx)
+	if err != nil {
+		return err
+	}
+	// Add the peer to the secret.
+	data, err := Peer{peer}.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("marshal peer: %w", err)
+	}
+	secret.Data[peer.GetId()] = data
+	return c.patchPeers(ctx, secret)
 }
 
 // AddObserver adds an observer to the consensus group.
@@ -96,7 +135,19 @@ func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error
 	if !c.IsLeader() {
 		return storage.ErrNotLeader
 	}
-	return storage.ErrNotImplemented
+	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
+	// Get the current peers.
+	secret, err := c.getPeersSecret(ctx)
+	if err != nil {
+		return err
+	}
+	// Add the peer to the secret.
+	data, err := Peer{peer}.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("marshal peer: %w", err)
+	}
+	secret.Data[peer.GetId()] = data
+	return c.patchPeers(ctx, secret)
 }
 
 // DemoteVoter demotes a voter to an observer.
@@ -106,7 +157,19 @@ func (c *Consensus) DemoteVoter(ctx context.Context, peer *v1.StoragePeer) error
 	if !c.IsLeader() {
 		return storage.ErrNotLeader
 	}
-	return storage.ErrNotImplemented
+	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
+	// Get the current peers.
+	secret, err := c.getPeersSecret(ctx)
+	if err != nil {
+		return err
+	}
+	// Add the peer to the secret.
+	data, err := Peer{peer}.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("marshal peer: %w", err)
+	}
+	secret.Data[peer.GetId()] = data
+	return c.patchPeers(ctx, secret)
 }
 
 // RemovePeer removes a peer from the consensus group. If wait
@@ -117,17 +180,20 @@ func (c *Consensus) RemovePeer(ctx context.Context, peer *v1.StoragePeer, wait b
 	if !c.IsLeader() {
 		return storage.ErrNotLeader
 	}
-	return storage.ErrNotImplemented
+	// Get the current peers.
+	secret, err := c.getPeersSecret(ctx)
+	if err != nil {
+		return err
+	}
+	// Remove the peer from the secret.
+	delete(secret.Data, peer.GetId())
+	return c.patchPeers(ctx, secret)
 }
 
 func (c *Consensus) getPeers(ctx context.Context) ([]Peer, error) {
-	var secret corev1.Secret
-	err := c.mgr.GetClient().Get(ctx, client.ObjectKey{
-		Name:      StoragePeersSecret,
-		Namespace: c.Namespace,
-	}, &secret)
+	secret, err := c.getPeersSecret(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get peers secret: %w", err)
+		return nil, err
 	}
 	var peers []Peer
 	for _, v := range secret.Data {
@@ -139,6 +205,18 @@ func (c *Consensus) getPeers(ctx context.Context) ([]Peer, error) {
 		peers = append(peers, p)
 	}
 	return peers, nil
+}
+
+func (c *Consensus) getPeersSecret(ctx context.Context) (*corev1.Secret, error) {
+	var secret corev1.Secret
+	err := c.mgr.GetClient().Get(ctx, client.ObjectKey{
+		Name:      StoragePeersSecret,
+		Namespace: c.Namespace,
+	}, &secret)
+	if err != nil {
+		return nil, fmt.Errorf("get peers secret: %w", err)
+	}
+	return &secret, nil
 }
 
 func (c *Consensus) patchPeers(ctx context.Context, secret *corev1.Secret) error {
