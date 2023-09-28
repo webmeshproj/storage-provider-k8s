@@ -11,6 +11,7 @@ env:
   GOLANGCI_LINT_VERSION: v1.54.2
   CACHE_DEP_PATH: go.sum
   LINT_TIMEOUT: 10m
+  RICHGO_FORCE_COLOR: 1
 
 jobs:
   lint:
