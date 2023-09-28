@@ -18,7 +18,6 @@ package provider
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -32,26 +31,20 @@ import (
 )
 
 func TestProviderConformance(t *testing.T) {
-	testutil.TestStorageProviderConformance(context.Background(), t, setupTestProvider)
+	provider := setupTestProvider(context.Background(), t)
+	testutil.TestSingleNodeProviderConformance(context.Background(), t, provider)
 }
-
-var once sync.Once
 
 func setupTestProvider(ctx context.Context, t *testing.T) storage.Provider {
 	t.Log("Starting test environment")
-	var useExisting bool
 	testenv := envtest.Environment{
 		ControlPlaneStartTimeout: time.Second * 15,
 		ControlPlaneStopTimeout:  time.Second * 15,
-		UseExistingCluster:       &useExisting,
 	}
 	cfg, err := testenv.Start()
 	if err != nil {
 		t.Fatal("Failed to start test environment", err)
 	}
-	once.Do(func() {
-		useExisting = true
-	})
 	t.Cleanup(func() {
 		err := testenv.Stop()
 		if err != nil {
