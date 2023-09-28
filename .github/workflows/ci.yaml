@@ -1,0 +1,68 @@
+name: Conformance Tests
+on:
+  push:
+    branches: [main]
+    tags: [v*]
+  pull_request:
+    branches: [main]
+
+env:
+  GO_VERSION: "1.21"
+  GOLANGCI_LINT_VERSION: v1.54.2
+  CACHE_DEP_PATH: go.sum
+  LINT_TIMEOUT: 10m
+
+jobs:
+  lint:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: false
+
+      - name: Run Linting
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: --timeout ${{ env.LINT_TIMEOUT }}
+
+  tests:
+    name: Conformance Tests
+    needs: [lint]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: false
+
+      - name: Setup Test Cache
+        uses: actions/cache@v3
+        with:
+          key: ${{ runner.os }}-ci-tests-go-${{ env.GO_VERSION }}-${{ hashFiles(env.CACHE_DEP_PATH) }}
+          restore-keys: ${{ runner.os }}-ci-tests-go-${{ env.GO_VERSION }}-
+          path: |
+            ~/go/pkg
+            ~/go/bin
+            ~/.cache/go-build
+            bin/
+
+      - name: Run Conformance Tests
+        shell: bash
+        run: make ci-test
