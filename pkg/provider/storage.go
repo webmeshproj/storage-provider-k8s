@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/webmeshproj/webmesh/pkg/storage"
+	"github.com/webmeshproj/webmesh/pkg/storage/storageutil"
 )
 
 // Ensure we satisfy the storage interface.
@@ -31,21 +32,33 @@ type Storage struct{ *Provider }
 
 // GetValue returns the value of a key.
 func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
+	if !storageutil.IsValidKey(string(key)) {
+		return nil, storage.ErrInvalidKey
+	}
 	return nil, storage.ErrNotImplemented
 }
 
 // PutValue sets the value of a key. TTL is optional and can be set to 0.
 func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Duration) error {
+	if !storageutil.IsValidKey(string(key)) {
+		return storage.ErrInvalidKey
+	}
 	return storage.ErrNotImplemented
 }
 
 // Delete removes a key.
 func (st *Storage) Delete(ctx context.Context, key []byte) error {
+	if !storageutil.IsValidKey(string(key)) {
+		return storage.ErrInvalidKey
+	}
 	return storage.ErrNotImplemented
 }
 
 // ListKeys returns all keys with a given prefix.
 func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error) {
+	if !storageutil.IsValidKey(string(prefix)) {
+		return nil, storage.ErrInvalidPrefix
+	}
 	return nil, storage.ErrNotImplemented
 }
 
@@ -53,11 +66,17 @@ func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error
 // that the iterator not attempt any write operations as this will cause
 // a deadlock. The iteration will stop if the iterator returns an error.
 func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.PrefixIterator) error {
+	if !storageutil.IsValidKey(string(prefix)) {
+		return storage.ErrInvalidPrefix
+	}
 	return storage.ErrNotImplemented
 }
 
 // Subscribe will call the given function whenever a key with the given prefix is changed.
 // The returned function can be called to unsubscribe.
 func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.SubscribeFunc) (context.CancelFunc, error) {
+	if !storageutil.IsValidKey(string(prefix)) {
+		return nil, storage.ErrInvalidPrefix
+	}
 	return nil, storage.ErrNotImplemented
 }

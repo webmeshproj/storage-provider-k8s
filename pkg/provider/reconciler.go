@@ -39,8 +39,7 @@ var _ reconcile.Reconciler = &Provider{}
 func (p *Provider) Eventf(obj runtime.Object, eventType, reason, message string, args ...interface{}) {
 }
 
-// Reconcile reconciles the given request. This is used to notify subscribers
-// of changes to the given object.
+// Reconcile reconciles the given request. This is used to notify subscribers of changes to the given object.
 func (p *Provider) Reconcile(ctx context.Context, req reconcile.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
