@@ -125,6 +125,9 @@ func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 	if err != nil {
 		return fmt.Errorf("marshal peer: %w", err)
 	}
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
+	}
 	secret.Data[peer.GetId()] = data
 	return c.patchPeers(ctx, secret)
 }
@@ -147,6 +150,9 @@ func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error
 	if err != nil {
 		return fmt.Errorf("marshal peer: %w", err)
 	}
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
+	}
 	secret.Data[peer.GetId()] = data
 	return c.patchPeers(ctx, secret)
 }
@@ -168,6 +174,9 @@ func (c *Consensus) DemoteVoter(ctx context.Context, peer *v1.StoragePeer) error
 	data, err := Peer{peer}.MarshalJSON()
 	if err != nil {
 		return fmt.Errorf("marshal peer: %w", err)
+	}
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
 	}
 	secret.Data[peer.GetId()] = data
 	return c.patchPeers(ctx, secret)
@@ -225,6 +234,7 @@ func (c *Consensus) patchPeers(ctx context.Context, secret *corev1.Secret) error
 		Kind:       "Secret",
 		APIVersion: "v1",
 	}
+	secret.ObjectMeta.ManagedFields = nil
 	err := c.mgr.GetClient().Patch(ctx, secret, client.Apply, client.ForceOwnership, client.FieldOwner(FieldOwner))
 	if err != nil {
 		return fmt.Errorf("patch peers secret: %w", err)

@@ -19,6 +19,7 @@ package provider
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/gob"
 	"fmt"
 	"strings"
@@ -89,7 +90,8 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 		}
 		return nil, err
 	}
-	data, ok := secret.Data[string(key)]
+	keyHash := hashKey(key)
+	data, ok := secret.Data[keyHash]
 	if !ok {
 		return nil, storage.NewKeyNotFoundError(key)
 	}
@@ -104,13 +106,16 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 			go func() {
 				st.mu.Lock()
 				defer st.mu.Unlock()
-				delete(secret.Data, string(key))
+				delete(secret.Data, keyHash)
 				err := st.patchBucket(ctx, &secret)
 				if err != nil {
 					st.log.Error(err, "Failed to delete expired key", "key", string(key))
 				}
 			}()
 		}
+		return nil, storage.NewKeyNotFoundError(key)
+	}
+	if len(item.Value) == 0 {
 		return nil, storage.NewKeyNotFoundError(key)
 	}
 	return item.Value, nil
@@ -158,7 +163,11 @@ func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Dur
 	if err != nil {
 		return fmt.Errorf("marshal data item: %w", err)
 	}
-	secret.Data[string(key)] = data
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
+	}
+	keyHash := hashKey(key)
+	secret.Data[keyHash] = data
 	err = st.patchBucket(ctx, &secret)
 	if err != nil {
 		return err
@@ -188,7 +197,8 @@ func (st *Storage) Delete(ctx context.Context, key []byte) error {
 		}
 		return err
 	}
-	return nil
+	delete(secret.Data, hashKey(key))
+	return st.patchBucket(ctx, &secret)
 }
 
 // ListKeys returns all keys with a given prefix.
@@ -204,17 +214,17 @@ func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error
 	}
 	var keys [][]byte
 	for _, bucket := range buckets {
-		for k := range bucket.Data {
-			// Extra sanity check on the key
-			if !strings.HasPrefix(k, string(prefix)) {
-				continue
-			}
-			// Check if the key is expired.
+		for _, val := range bucket.Data {
 			item := DataItem{}
-			err := item.Unmarshal(bucket.Data[k])
+			err := item.Unmarshal(val)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshal data item: %w", err)
 			}
+			// Extra sanity check on the key
+			if !bytes.HasPrefix(item.Key, prefix) {
+				continue
+			}
+			// Check if the key is expired.
 			if !item.Expiry.IsZero() && item.Expiry.Before(time.Now().UTC()) {
 				// Leave deletions to other function calls.
 				continue
@@ -241,14 +251,14 @@ func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.Pre
 	// Map of index to keys to delete
 	toDelete := map[int][]string{}
 	for idx, bucket := range buckets {
-		for k, v := range bucket.Data {
-			if !strings.HasPrefix(k, string(prefix)) {
-				continue
-			}
+		for k, val := range bucket.Data {
 			var item DataItem
-			err := item.Unmarshal(v)
+			err := item.Unmarshal(val)
 			if err != nil {
 				return fmt.Errorf("unmarshal data item: %w", err)
+			}
+			if !bytes.HasPrefix(item.Key, prefix) {
+				continue
 			}
 			if !item.Expiry.IsZero() && item.Expiry.Before(time.Now().UTC()) {
 				// Defer a delete if we are the leader
@@ -291,7 +301,7 @@ func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.Subs
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	st.subs[uuid.NewString()] = Subscription{
-		prefix: string(prefix),
+		prefix: prefix,
 		seen:   make(map[string][]byte),
 		fn:     fn,
 		ctx:    ctx,
@@ -305,6 +315,7 @@ func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret) error
 		Kind:       "Secret",
 		APIVersion: "v1",
 	}
+	bucket.ObjectMeta.ManagedFields = nil
 	err := st.mgr.GetClient().Patch(ctx, bucket, client.Apply, client.ForceOwnership, client.FieldOwner(FieldOwner))
 	if err != nil {
 		return fmt.Errorf("patch bucket secret: %w", err)
@@ -346,4 +357,8 @@ func (st *Storage) bucketForKey(key []byte) string {
 		return strings.ToLower(spl[0])
 	}
 	return strings.ToLower(strings.Join(spl[:len(spl)-1], "/"))
+}
+
+func hashKey(key []byte) string {
+	return base64.RawStdEncoding.EncodeToString(key)
 }

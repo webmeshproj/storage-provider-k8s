@@ -20,7 +20,6 @@ package provider
 import (
 	"bytes"
 	"context"
-	"strings"
 
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	corev1 "k8s.io/api/core/v1"
@@ -39,7 +38,7 @@ func (p *Provider) Eventf(obj runtime.Object, eventType, reason, message string,
 }
 
 type Subscription struct {
-	prefix string
+	prefix []byte
 	seen   map[string][]byte
 	fn     storage.SubscribeFunc
 	ctx    context.Context
@@ -65,7 +64,7 @@ func (p *Provider) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result
 				continue
 			default:
 			}
-			if strings.HasPrefix(req.Name, strings.ToLower(sub.prefix)) {
+			if bytes.HasPrefix(bytes.ToLower([]byte(req.Name)), bytes.ToLower(sub.prefix)) {
 				sub.fn([]byte(req.Name), nil)
 			}
 		}
@@ -86,7 +85,7 @@ func (p *Provider) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result
 				p.log.Error(err, "Failed to unmarshal data item")
 				continue
 			}
-			if !bytes.HasPrefix(item.Key, []byte(sub.prefix)) {
+			if !bytes.HasPrefix(item.Key, sub.prefix) {
 				continue
 			}
 			// Check if we have seen this key before.

@@ -25,7 +25,9 @@ import (
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/testutil"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/webmeshproj/storage-provider-k8s/pkg/manager"
 )
@@ -37,6 +39,7 @@ func TestProviderConformance(t *testing.T) {
 
 func setupTestProvider(ctx context.Context, t *testing.T) storage.Provider {
 	t.Log("Starting test environment")
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	testenv := envtest.Environment{
 		ControlPlaneStartTimeout: time.Second * 15,
 		ControlPlaneStopTimeout:  time.Second * 15,
