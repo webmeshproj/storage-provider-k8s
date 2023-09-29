@@ -241,6 +241,12 @@ func (p *Provider) Bootstrap(ctx context.Context) error {
 	if !p.started.Load() {
 		return storage.ErrClosed
 	}
+	// Check if the secret already exists.
+	_, err := p.consensus.getPeersSecret(ctx)
+	if err == nil {
+		// Secret exists, we are already bootstrapped
+		return storage.ErrAlreadyBootstrapped
+	}
 	// We create the peers secret on first boot.
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
