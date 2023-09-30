@@ -23,6 +23,7 @@ import (
 
 	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
+	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"google.golang.org/protobuf/encoding/protojson"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -107,7 +108,7 @@ func (c *Consensus) GetLeader(ctx context.Context) (*v1.StoragePeer, error) {
 		}
 	}
 	c.trace(ctx, "No leader found")
-	return nil, storage.ErrNoLeader
+	return nil, errors.ErrNoLeader
 }
 
 // AddVoter adds a voter to the consensus group.
@@ -115,7 +116,7 @@ func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if !c.IsLeader() {
-		return storage.ErrNotLeader
+		return errors.ErrNotLeader
 	}
 	c.trace(ctx, "Adding voter", "peer", peer)
 	// There is only ever one writable peer.
@@ -143,7 +144,7 @@ func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if !c.IsLeader() {
-		return storage.ErrNotLeader
+		return errors.ErrNotLeader
 	}
 	c.trace(ctx, "Adding observer", "peer", peer)
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
@@ -170,7 +171,7 @@ func (c *Consensus) DemoteVoter(ctx context.Context, peer *v1.StoragePeer) error
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if !c.IsLeader() {
-		return storage.ErrNotLeader
+		return errors.ErrNotLeader
 	}
 	c.trace(ctx, "Demoting voter", "peer", peer)
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
@@ -198,7 +199,7 @@ func (c *Consensus) RemovePeer(ctx context.Context, peer *v1.StoragePeer, wait b
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if !c.IsLeader() {
-		return storage.ErrNotLeader
+		return errors.ErrNotLeader
 	}
 	c.trace(ctx, "Removing peer", "peer", peer)
 	// Get the current peers.

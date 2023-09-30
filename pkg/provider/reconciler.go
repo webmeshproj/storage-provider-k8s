@@ -40,7 +40,7 @@ func (p *Provider) Eventf(obj runtime.Object, eventType, reason, message string,
 type Subscription struct {
 	prefix []byte
 	seen   map[string][]byte
-	fn     storage.SubscribeFunc
+	fn     storage.KVSubscribeFunc
 	ctx    context.Context
 	cancel context.CancelFunc
 }

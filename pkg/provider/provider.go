@@ -29,6 +29,8 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
+	"github.com/webmeshproj/webmesh/pkg/storage/errors"
+	"github.com/webmeshproj/webmesh/pkg/storage/meshdb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coordinationv1client "k8s.io/client-go/kubernetes/typed/coordination/v1"
@@ -195,7 +197,7 @@ func (p *Provider) Start(ctx context.Context) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.started.Load() {
-		return storage.ErrStarted
+		return errors.ErrStarted
 	}
 	defer p.started.Store(true)
 	ctx, p.stop = context.WithCancel(ctx)
@@ -229,6 +231,12 @@ func (p *Provider) MeshStorage() storage.MeshStorage {
 	return p.storage
 }
 
+// MeshDB returns the underlying MeshDB instance. The provider does not
+// need to guarantee consistency on read operations.
+func (p *Provider) MeshDB() storage.MeshDB {
+	return meshdb.New(p.storage)
+}
+
 // Consensus returns the underlying Consensus instance.
 func (p *Provider) Consensus() storage.Consensus {
 	return p.consensus
@@ -239,13 +247,13 @@ func (p *Provider) Bootstrap(ctx context.Context) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if !p.started.Load() {
-		return storage.ErrClosed
+		return errors.ErrClosed
 	}
 	// Check if the secret already exists.
 	_, err := p.consensus.getPeersSecret(ctx)
 	if err == nil {
 		// Secret exists, we are already bootstrapped
-		return storage.ErrAlreadyBootstrapped
+		return errors.ErrAlreadyBootstrapped
 	}
 	// We create the peers secret on first boot.
 	secret := &corev1.Secret{
@@ -286,7 +294,7 @@ func (p *Provider) Status() *v1.StorageStatus {
 					ClusterStatus: v1.ClusterStatus_CLUSTER_NODE,
 				},
 			},
-			Message: storage.ErrClosed.Error(),
+			Message: errors.ErrClosed.Error(),
 		}
 	}
 	peers, err := p.consensus.GetPeers(context.Background())
@@ -305,7 +313,7 @@ func (p *Provider) Status() *v1.StorageStatus {
 					ClusterStatus: v1.ClusterStatus_CLUSTER_NODE,
 				},
 			},
-			Message: storage.ErrNotVoter.Error(),
+			Message: errors.ErrNotVoter.Error(),
 		}
 	}
 	return &v1.StorageStatus{
@@ -336,7 +344,7 @@ func (p *Provider) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if !p.started.Load() {
-		return storage.ErrClosed
+		return errors.ErrClosed
 	}
 	p.subsmu.Lock()
 	defer p.subsmu.Unlock()

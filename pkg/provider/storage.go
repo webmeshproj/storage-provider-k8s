@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/webmeshproj/webmesh/pkg/storage"
+	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"github.com/webmeshproj/webmesh/pkg/storage/storageutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -84,7 +85,7 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(key)) {
-		return nil, storage.ErrInvalidKey
+		return nil, errors.ErrInvalidKey
 	}
 	st.trace(ctx, "Getting value", "key", string(key))
 	bucket := st.bucketForKey(key)
@@ -95,14 +96,14 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 	}, &secret)
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
-			return nil, storage.NewKeyNotFoundError(key)
+			return nil, errors.NewKeyNotFoundError(key)
 		}
 		return nil, err
 	}
 	keyHash := hashKey(key)
 	data, ok := secret.Data[keyHash]
 	if !ok {
-		return nil, storage.NewKeyNotFoundError(key)
+		return nil, errors.NewKeyNotFoundError(key)
 	}
 	var item DataItem
 	err = item.Unmarshal(data)
@@ -122,10 +123,10 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 				}
 			}()
 		}
-		return nil, storage.NewKeyNotFoundError(key)
+		return nil, errors.NewKeyNotFoundError(key)
 	}
 	if len(item.Value) == 0 {
-		return nil, storage.NewKeyNotFoundError(key)
+		return nil, errors.NewKeyNotFoundError(key)
 	}
 	return item.Value, nil
 }
@@ -135,10 +136,10 @@ func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Dur
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(key)) {
-		return storage.ErrInvalidKey
+		return errors.ErrInvalidKey
 	}
 	if !st.leaders.IsLeader() {
-		return storage.ErrNotLeader
+		return errors.ErrNotLeader
 	}
 	st.trace(ctx, "Putting key", "key", string(key))
 	bucket := st.bucketForKey(key)
@@ -189,10 +190,10 @@ func (st *Storage) Delete(ctx context.Context, key []byte) error {
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(key)) {
-		return storage.ErrInvalidKey
+		return errors.ErrInvalidKey
 	}
 	if !st.leaders.IsLeader() {
-		return storage.ErrNotLeader
+		return errors.ErrNotLeader
 	}
 	st.trace(ctx, "Deleting key", "key", string(key))
 	bucket := st.bucketForKey(key)
@@ -203,7 +204,7 @@ func (st *Storage) Delete(ctx context.Context, key []byte) error {
 	}, &secret)
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
-			return storage.NewKeyNotFoundError(key)
+			return errors.NewKeyNotFoundError(key)
 		}
 		return err
 	}
@@ -216,7 +217,7 @@ func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(prefix)) {
-		return nil, storage.ErrInvalidPrefix
+		return nil, errors.ErrInvalidPrefix
 	}
 	st.trace(ctx, "Listing keys", "prefix", string(prefix))
 	buckets, err := st.bucketsForPrefix(ctx, prefix)
@@ -253,7 +254,7 @@ func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.Pre
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(prefix)) {
-		return storage.ErrInvalidPrefix
+		return errors.ErrInvalidPrefix
 	}
 	st.trace(ctx, "Iterating prefix", "prefix", string(prefix))
 	buckets, err := st.bucketsForPrefix(ctx, prefix)
@@ -286,11 +287,11 @@ func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.Pre
 
 // Subscribe will call the given function whenever a key with the given prefix is changed.
 // The returned function can be called to unsubscribe.
-func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.SubscribeFunc) (context.CancelFunc, error) {
+func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.KVSubscribeFunc) (context.CancelFunc, error) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	if !storageutil.IsValidKey(string(prefix)) {
-		return nil, storage.ErrInvalidPrefix
+		return nil, errors.ErrInvalidPrefix
 	}
 	st.trace(ctx, "Subscribing to prefix", "prefix", string(prefix))
 	ctx, cancel := context.WithCancel(ctx)

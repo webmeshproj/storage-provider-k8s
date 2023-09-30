@@ -42,3 +42,8 @@ ifeq ($(CI),true)
 endif
 ci-test: ## Run all CI tests.
 	$(MAKE) $(CI_TARGETS)
+
+##@ Development
+
+generate:
+	$(GO) generate ./...
