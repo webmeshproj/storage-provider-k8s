@@ -21,8 +21,13 @@ import (
 	"net/netip"
 
 	"github.com/webmeshproj/webmesh/pkg/storage"
+	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
+	"github.com/webmeshproj/storage-provider-k8s/pkg/provider/util"
 )
 
 // Ensure we implement the interface.
@@ -44,57 +49,173 @@ func NewNetworking(cli client.Client, namespace string) *Networking {
 
 // PutNetworkACL creates or updates a NetworkACL.
 func (nw *Networking) PutNetworkACL(ctx context.Context, acl types.NetworkACL) error {
-	return nil
+	var nacl storagev1.NetworkACL
+	nacl.TypeMeta = metav1.TypeMeta{
+		APIVersion: storagev1.GroupVersion.String(),
+		Kind:       "NetworkACL",
+	}
+	nacl.ObjectMeta = metav1.ObjectMeta{
+		Name:      acl.Name,
+		Namespace: nw.namespace,
+	}
+	nacl.Spec.NetworkACL = acl
+	return util.PatchObject(ctx, nw.cli, &nacl)
 }
 
 // GetNetworkACL returns a NetworkACL by name.
 func (nw *Networking) GetNetworkACL(ctx context.Context, name string) (types.NetworkACL, error) {
-	return types.NetworkACL{}, nil
+	var nacl storagev1.NetworkACL
+	err := nw.cli.Get(ctx, client.ObjectKey{
+		Name:      name,
+		Namespace: nw.namespace,
+	}, &nacl)
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			return types.NetworkACL{}, errors.ErrACLNotFound
+		}
+		return types.NetworkACL{}, err
+	}
+	return nacl.Spec.NetworkACL, nil
 }
 
 // DeleteNetworkACL deletes a NetworkACL by name.
 func (nw *Networking) DeleteNetworkACL(ctx context.Context, name string) error {
-	return nil
+	err := nw.cli.Delete(ctx, &storagev1.NetworkACL{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: storagev1.GroupVersion.String(),
+			Kind:       "NetworkACL",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: nw.namespace,
+		},
+	})
+	return client.IgnoreNotFound(err)
 }
 
 // ListNetworkACLs returns a list of NetworkACLs.
 func (nw *Networking) ListNetworkACLs(ctx context.Context) (types.NetworkACLs, error) {
-	return nil, nil
+	var nacls storagev1.NetworkACLList
+	err := nw.cli.List(ctx, &nacls, client.InNamespace(nw.namespace))
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			return nil, nil
+		}
+		return nil, err
+	}
+	acls := make(types.NetworkACLs, len(nacls.Items))
+	for i, nacl := range nacls.Items {
+		acls[i] = nacl.Spec.NetworkACL
+	}
+	return acls, nil
 }
 
 // RouteNodeLabel is the label used to store the node ID.
 const RouteNodeLabel = "webmesh.io/node-id"
 
-// RouteCIDRsLabel is the label used to store the CIDRs as a comma separated string
-// for faster lookups.
-const RouteCIDRsLabel = "webmesh.io/cidrs"
-
 // PutRoute creates or updates a Route.
 func (nw *Networking) PutRoute(ctx context.Context, route types.Route) error {
-	return nil
+	var r storagev1.Route
+	r.TypeMeta = metav1.TypeMeta{
+		APIVersion: storagev1.GroupVersion.String(),
+		Kind:       "Route",
+	}
+	r.ObjectMeta = metav1.ObjectMeta{
+		Name:      route.Name,
+		Namespace: nw.namespace,
+		Labels: map[string]string{
+			RouteNodeLabel: route.GetNode(),
+		},
+	}
+	r.Spec.Route = route
+	return util.PatchObject(ctx, nw.cli, &r)
 }
 
 // GetRoute returns a Route by name.
 func (nw *Networking) GetRoute(ctx context.Context, name string) (types.Route, error) {
-	return types.Route{}, nil
+	var r storagev1.Route
+	err := nw.cli.Get(ctx, client.ObjectKey{
+		Name:      name,
+		Namespace: nw.namespace,
+	}, &r)
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			return types.Route{}, errors.ErrRouteNotFound
+		}
+		return types.Route{}, err
+	}
+	return r.Spec.Route, nil
 }
 
 // GetRoutesByNode returns a list of Routes for a given Node.
 func (nw *Networking) GetRoutesByNode(ctx context.Context, nodeID types.NodeID) (types.Routes, error) {
-	return nil, nil
+	var routelist storagev1.RouteList
+	err := nw.cli.List(ctx, &routelist, client.MatchingLabels{
+		RouteNodeLabel: nodeID.String(),
+	}, client.InNamespace(nw.namespace))
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			return nil, nil
+		}
+		return nil, err
+	}
+	rs := make(types.Routes, len(routelist.Items))
+	for i, route := range routelist.Items {
+		rs[i] = route.Spec.Route
+	}
+	return rs, nil
 }
 
 // GetRoutesByCIDR returns a list of Routes for a given CIDR.
 func (nw *Networking) GetRoutesByCIDR(ctx context.Context, cidr netip.Prefix) (types.Routes, error) {
-	return nil, nil
+	var routelist storagev1.RouteList
+	err := nw.cli.List(ctx, &routelist, client.InNamespace(nw.namespace))
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			return nil, nil
+		}
+		return nil, err
+	}
+	rs := make(types.Routes, 0, len(routelist.Items))
+	for _, route := range routelist.Items {
+		for _, prefix := range route.Spec.Route.DestinationPrefixes() {
+			if prefix.Bits() == cidr.Bits() && prefix.Addr().Compare(cidr.Addr()) == 0 {
+				rs = append(rs, route.Spec.Route)
+				break
+			}
+		}
+	}
+	return rs, nil
 }
 
 // DeleteRoute deletes a Route by name.
 func (nw *Networking) DeleteRoute(ctx context.Context, name string) error {
-	return nil
+	err := nw.cli.Delete(ctx, &storagev1.Route{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: storagev1.GroupVersion.String(),
+			Kind:       "Route",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: nw.namespace,
+		},
+	})
+	return client.IgnoreNotFound(err)
 }
 
 // ListRoutes returns a list of Routes.
 func (nw *Networking) ListRoutes(ctx context.Context) (types.Routes, error) {
-	return nil, nil
+	var routes storagev1.RouteList
+	err := nw.cli.List(ctx, &routes, client.InNamespace(nw.namespace))
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			return nil, nil
+		}
+		return nil, err
+	}
+	rs := make(types.Routes, len(routes.Items))
+	for i, route := range routes.Items {
+		rs[i] = route.Spec.Route
+	}
+	return rs, nil
 }
