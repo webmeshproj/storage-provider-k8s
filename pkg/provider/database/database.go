@@ -55,6 +55,7 @@ func New(mgr manager.Manager, namespace string) (*Database, error) {
 	}
 	err := ctrl.
 		NewControllerManagedBy(mgr).
+		Named("meshdb-k8s").
 		// Register the main reconciler for the peer CRD.
 		For(&storagev1.Peer{}).
 		// Watch the Routes as well and queue reconciles for the related peer.
