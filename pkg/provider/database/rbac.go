@@ -97,6 +97,14 @@ func (r *RBAC) GetEnabled(ctx context.Context) (bool, error) {
 // PutRole creates or updates a role.
 func (r *RBAC) PutRole(ctx context.Context, role types.Role) error {
 	var strole storagev1.Role
+	strole.ObjectMeta = metav1.ObjectMeta{
+		Namespace: r.namespace,
+		Name:      role.Name,
+	}
+	strole.TypeMeta = metav1.TypeMeta{
+		Kind:       "Role",
+		APIVersion: storagev1.GroupVersion.String(),
+	}
 	strole.Spec.Role = role
 	return util.PatchObject(ctx, r.cli, &strole)
 }
@@ -154,51 +162,173 @@ func (r *RBAC) ListRoles(ctx context.Context) (types.RolesList, error) {
 // PutRoleBinding creates or updates a rolebinding.
 func (r *RBAC) PutRoleBinding(ctx context.Context, rolebinding types.RoleBinding) error {
 	var rb storagev1.RoleBinding
+	rb.TypeMeta = metav1.TypeMeta{
+		Kind:       "RoleBinding",
+		APIVersion: storagev1.GroupVersion.String(),
+	}
+	rb.ObjectMeta = metav1.ObjectMeta{
+		Namespace: r.namespace,
+		Name:      rolebinding.Name,
+	}
 	rb.Spec.RoleBinding = rolebinding
 	return util.PatchObject(ctx, r.cli, &rb)
 }
 
 // GetRoleBinding returns a rolebinding by name.
 func (r *RBAC) GetRoleBinding(ctx context.Context, name string) (types.RoleBinding, error) {
-	return types.RoleBinding{}, nil
+	var rb storagev1.RoleBinding
+	err := r.cli.Get(ctx, client.ObjectKey{
+		Namespace: r.namespace,
+		Name:      name,
+	}, &rb)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return types.RoleBinding{}, fmt.Errorf("get rolebinding: %w", err)
+		}
+		return types.RoleBinding{}, errors.ErrRoleBindingNotFound
+	}
+	return rb.Spec.RoleBinding, nil
 }
 
 // DeleteRoleBinding deletes a rolebinding by name.
 func (r *RBAC) DeleteRoleBinding(ctx context.Context, name string) error {
-	return nil
+	err := r.cli.Delete(ctx, &storagev1.RoleBinding{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "RoleBinding",
+			APIVersion: storagev1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: r.namespace,
+			Name:      name,
+		},
+	})
+	return client.IgnoreNotFound(err)
 }
 
 // ListRoleBindings returns a list of all rolebindings.
 func (r *RBAC) ListRoleBindings(ctx context.Context) ([]types.RoleBinding, error) {
-	return nil, nil
+	var rbList storagev1.RoleBindingList
+	err := r.cli.List(ctx, &rbList, &client.ListOptions{
+		Namespace: r.namespace,
+	})
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return nil, fmt.Errorf("list rolebindings: %w", err)
+		}
+		return nil, nil
+	}
+	out := make([]types.RoleBinding, len(rbList.Items))
+	for i, rb := range rbList.Items {
+		out[i] = rb.Spec.RoleBinding
+	}
+	return out, nil
 }
 
 // PutGroup creates or updates a group.
 func (r *RBAC) PutGroup(ctx context.Context, group types.Group) error {
-	return nil
+	var stgroup storagev1.Group
+	stgroup.ObjectMeta = metav1.ObjectMeta{
+		Namespace: r.namespace,
+		Name:      group.Name,
+	}
+	stgroup.TypeMeta = metav1.TypeMeta{
+		Kind:       "Group",
+		APIVersion: storagev1.GroupVersion.String(),
+	}
+	stgroup.Spec.Group = group
+	return util.PatchObject(ctx, r.cli, &stgroup)
 }
 
 // GetGroup returns a group by name.
 func (r *RBAC) GetGroup(ctx context.Context, name string) (types.Group, error) {
-	return types.Group{}, nil
+	var stgroup storagev1.Group
+	err := r.cli.Get(ctx, client.ObjectKey{
+		Namespace: r.namespace,
+		Name:      name,
+	}, &stgroup)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return types.Group{}, fmt.Errorf("get group: %w", err)
+		}
+		return types.Group{}, errors.ErrGroupNotFound
+	}
+	return stgroup.Spec.Group, nil
 }
 
 // DeleteGroup deletes a group by name.
 func (r *RBAC) DeleteGroup(ctx context.Context, name string) error {
-	return nil
+	err := r.cli.Delete(ctx, &storagev1.Group{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Group",
+			APIVersion: storagev1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: r.namespace,
+			Name:      name,
+		},
+	})
+	return client.IgnoreNotFound(err)
 }
 
 // ListGroups returns a list of all groups.
 func (r *RBAC) ListGroups(ctx context.Context) ([]types.Group, error) {
-	return nil, nil
+	var groups storagev1.GroupList
+	err := r.cli.List(ctx, &groups, &client.ListOptions{
+		Namespace: r.namespace,
+	})
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return nil, fmt.Errorf("list groups: %w", err)
+		}
+		return nil, nil
+	}
+	out := make([]types.Group, len(groups.Items))
+	for i, group := range groups.Items {
+		out[i] = group.Spec.Group
+	}
+	return out, nil
 }
 
 // ListNodeRoles returns a list of all roles for a node.
-func (r *RBAC) ListNodeRoles(ctx context.Context, nodeID string) (types.RolesList, error) {
-	return nil, nil
+func (r *RBAC) ListNodeRoles(ctx context.Context, nodeID types.NodeID) (types.RolesList, error) {
+	rbs, err := r.ListRoleBindings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out types.RolesList
+	for _, rb := range rbs {
+		if rb.ContainsNodeID(nodeID) {
+			role, err := r.GetRole(ctx, rb.Role)
+			if err != nil {
+				if client.IgnoreNotFound(err) == nil {
+					continue
+				}
+				return nil, err
+			}
+			out = append(out, role)
+		}
+	}
+	return out, nil
 }
 
 // ListUserRoles returns a list of all roles for a user.
-func (r *RBAC) ListUserRoles(ctx context.Context, user string) (types.RolesList, error) {
-	return nil, nil
+func (r *RBAC) ListUserRoles(ctx context.Context, userID types.NodeID) (types.RolesList, error) {
+	rbs, err := r.ListRoleBindings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out types.RolesList
+	for _, rb := range rbs {
+		if rb.ContainsUserID(userID) {
+			role, err := r.GetRole(ctx, rb.Role)
+			if err != nil {
+				if client.IgnoreNotFound(err) == nil {
+					continue
+				}
+				return nil, err
+			}
+			out = append(out, role)
+		}
+	}
+	return out, nil
 }
