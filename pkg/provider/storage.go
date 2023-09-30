@@ -33,6 +33,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
+	"github.com/webmeshproj/storage-provider-k8s/pkg/provider/util"
 )
 
 // Ensure we satisfy the storage interface.
@@ -43,8 +46,6 @@ const (
 	MeshStorageLabel = "webmesh.io/storage"
 	// BucketLabel is the label used to identify the bucket for a given key.
 	BucketLabel = "webmesh.io/storage-bucket"
-	// FieldOwner is the field used to identify the owner of a secret.
-	FieldOwner = "storage.webmesh.io"
 	// StorageTraceVLevel is the log level for storage trace logs.
 	StorageTraceVLevel = 2
 )
@@ -314,10 +315,7 @@ func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret, rawBu
 			return fmt.Errorf("delete bucket secret: %w", err)
 		}
 	}
-	bucket.ObjectMeta.ResourceVersion = ""
-	bucket.ObjectMeta.UID = ""
-	bucket.ObjectMeta.Generation = 0
-	bucket.ObjectMeta.CreationTimestamp = metav1.Time{}
+	util.StripPatchMeta(&bucket.ObjectMeta)
 	bucket.TypeMeta = metav1.TypeMeta{
 		Kind:       "Secret",
 		APIVersion: "v1",
@@ -328,7 +326,7 @@ func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret, rawBu
 	}
 	bucket.ObjectMeta.ManagedFields = nil
 	st.trace(ctx, "Patching bucket", "bucket", bucket.Name)
-	err := st.mgr.GetClient().Patch(ctx, bucket, client.Apply, client.ForceOwnership, client.FieldOwner(FieldOwner))
+	err := st.mgr.GetClient().Patch(ctx, bucket, client.Apply, client.ForceOwnership, client.FieldOwner(storagev1.FieldOwner))
 	if err != nil {
 		return fmt.Errorf("patch bucket secret: %w", err)
 	}

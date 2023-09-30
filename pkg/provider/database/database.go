@@ -37,13 +37,13 @@ type Database struct {
 }
 
 // New returns a new Database instance.
-func New(mgr manager.Manager) *Database {
+func New(mgr manager.Manager, namespace string) *Database {
 	return &Database{
-		peers:   NewPeers(mgr.GetClient()),
-		graph:   types.NewGraphWithStore(NewGraphStore(mgr.GetClient())),
-		rbac:    NewRBAC(mgr.GetClient()),
-		state:   NewMeshState(mgr.GetClient()),
-		network: NewNetworking(mgr.GetClient()),
+		peers:   NewPeers(mgr.GetClient(), namespace),
+		graph:   types.NewGraphWithStore(NewGraphStore(mgr.GetClient(), namespace)),
+		rbac:    NewRBAC(mgr.GetClient(), namespace),
+		state:   NewMeshState(mgr.GetClient(), namespace),
+		network: NewNetworking(mgr.GetClient(), namespace),
 	}
 }
 

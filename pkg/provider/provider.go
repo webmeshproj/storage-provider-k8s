@@ -81,6 +81,7 @@ type Provider struct {
 	laddr     net.Addr
 	lport     uint16
 	mgr       manager.Manager
+	db        *database.Database
 	storage   *Storage
 	consensus *Consensus
 	leaders   *leaderelection.LeaderElector
@@ -115,6 +116,7 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 	p := &Provider{
 		Options: options,
 		mgr:     mgr,
+		db:      database.New(mgr, options.Namespace),
 		subs:    make(map[string]Subscription),
 		errc:    make(chan error, 1),
 		log:     ctrl.Log.WithName("storage-provider"),
@@ -236,7 +238,7 @@ func (p *Provider) MeshStorage() storage.MeshStorage {
 // MeshDB returns the underlying MeshDB instance. The provider does not
 // need to guarantee consistency on read operations.
 func (p *Provider) MeshDB() storage.MeshDB {
-	return database.New(p.mgr)
+	return p.db
 }
 
 // Consensus returns the underlying Consensus instance.

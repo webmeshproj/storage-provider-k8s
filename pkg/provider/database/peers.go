@@ -30,13 +30,15 @@ var _ storage.Peers = &Peers{}
 
 // Peers implements the Peers interface.
 type Peers struct {
-	cli client.Client
+	cli       client.Client
+	namespace string
 }
 
 // NewPeers returns a new Peers instance.
-func NewPeers(cli client.Client) *Peers {
+func NewPeers(cli client.Client, namespace string) *Peers {
 	return &Peers{
-		cli: cli,
+		cli:       cli,
+		namespace: namespace,
 	}
 }
 

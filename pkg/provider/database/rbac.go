@@ -29,13 +29,15 @@ var _ storage.RBAC = &RBAC{}
 
 // RBAC implements the RBAC interface.
 type RBAC struct {
-	cli client.Client
+	cli       client.Client
+	namespace string
 }
 
 // NewRBAC returns a new RBAC instance.
-func NewRBAC(cli client.Client) *RBAC {
+func NewRBAC(cli client.Client, namespace string) *RBAC {
 	return &RBAC{
-		cli: cli,
+		cli:       cli,
+		namespace: namespace,
 	}
 }
 

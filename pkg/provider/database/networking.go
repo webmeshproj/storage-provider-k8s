@@ -30,13 +30,15 @@ var _ storage.Networking = &Networking{}
 
 // Networking implements the Networking interface.
 type Networking struct {
-	cli client.Client
+	cli       client.Client
+	namespace string
 }
 
 // NewNetworking returns a new Networking instance.
-func NewNetworking(cli client.Client) *Networking {
+func NewNetworking(cli client.Client, namespace string) *Networking {
 	return &Networking{
-		cli: cli,
+		cli:       cli,
+		namespace: namespace,
 	}
 }
 

@@ -27,13 +27,15 @@ var _ types.PeerGraphStore = &GraphStore{}
 
 // GraphStore implements the PeerGraphStore interface.
 type GraphStore struct {
-	cli client.Client
+	cli       client.Client
+	namespace string
 }
 
 // NewGraphStore returns a new GraphStore instance.
-func NewGraphStore(cli client.Client) *GraphStore {
+func NewGraphStore(cli client.Client, namespace string) *GraphStore {
 	return &GraphStore{
-		cli: cli,
+		cli:       cli,
+		namespace: namespace,
 	}
 }
 
