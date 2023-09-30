@@ -35,6 +35,9 @@ import (
 // Ensure we implement the interface.
 var _ storage.RBAC = &RBAC{}
 
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=roles;rolebindings;groups,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=roles/status;rolebindings/status;groups/status,verbs=get;update;patch
+
 // RBAC implements the RBAC interface.
 type RBAC struct {
 	cli       client.Client

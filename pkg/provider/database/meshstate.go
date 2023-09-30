@@ -34,6 +34,9 @@ import (
 // Ensure we implement the interface.
 var _ storage.MeshState = &MeshState{}
 
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshstates,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshstates/status,verbs=get;update;patch
+
 // MeshState implements the MeshState interface.
 type MeshState struct {
 	cli       client.Client

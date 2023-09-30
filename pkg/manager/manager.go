@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
 )
 
 // Manager is the controller-runtime manager.
@@ -60,6 +62,10 @@ func New(opts Options) (Manager, error) {
 func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 	scheme := runtime.NewScheme()
 	err := corescheme.AddToScheme(scheme)
+	if err != nil {
+		return nil, err
+	}
+	err = storagev1.AddToScheme(scheme)
 	if err != nil {
 		return nil, err
 	}

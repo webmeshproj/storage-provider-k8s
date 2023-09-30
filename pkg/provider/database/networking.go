@@ -33,6 +33,9 @@ import (
 // Ensure we implement the interface.
 var _ storage.Networking = &Networking{}
 
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=networkacls;routes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=networkacls/status;routes/status,verbs=get;update;patch
+
 // RouteNodeLabel is the label used to store the node ID.
 const RouteNodeLabel = "webmesh.io/node-id"
 

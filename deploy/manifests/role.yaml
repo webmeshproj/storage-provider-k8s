@@ -1,0 +1,112 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: webmesh-storage-role
+rules:
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - groups
+  - rolebindings
+  - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - groups/status
+  - rolebindings/status
+  - roles/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - meshedges
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - meshedges/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - meshstates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - meshstates/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - networkacls
+  - routes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - networkacls/status
+  - routes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - peers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - peers/status
+  verbs:
+  - get
+  - patch
+  - update

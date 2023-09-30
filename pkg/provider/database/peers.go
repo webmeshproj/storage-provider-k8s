@@ -35,6 +35,9 @@ import (
 // Ensure we implement the interface.
 var _ storage.Peers = &Peers{}
 
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=peers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=peers/status,verbs=get;update;patch
+
 // Peers implements the Peers interface.
 type Peers struct {
 	cli       client.Client

@@ -31,6 +31,9 @@ import (
 // Ensure we implement the interface.
 var _ types.PeerGraphStore = &GraphStore{}
 
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshedges,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshedges/status,verbs=get;update;patch
+
 // EdgeSourceLabel is the label used to store the source node ID.
 const EdgeSourceLabel = "webmesh.io/edge-source"
 
