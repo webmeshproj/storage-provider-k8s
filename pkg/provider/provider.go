@@ -30,7 +30,6 @@ import (
 	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
-	"github.com/webmeshproj/webmesh/pkg/storage/meshdb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coordinationv1client "k8s.io/client-go/kubernetes/typed/coordination/v1"
@@ -42,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	"github.com/webmeshproj/storage-provider-k8s/pkg/manager"
+	"github.com/webmeshproj/storage-provider-k8s/pkg/provider/database"
 )
 
 const (
@@ -236,7 +236,7 @@ func (p *Provider) MeshStorage() storage.MeshStorage {
 // MeshDB returns the underlying MeshDB instance. The provider does not
 // need to guarantee consistency on read operations.
 func (p *Provider) MeshDB() storage.MeshDB {
-	return meshdb.New(p.storage)
+	return database.New(p.mgr)
 }
 
 // Consensus returns the underlying Consensus instance.

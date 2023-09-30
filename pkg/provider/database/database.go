@@ -32,6 +32,13 @@ type Database struct {
 	mgr manager.Manager
 }
 
+// New returns a new Database instance.
+func New(mgr manager.Manager) *Database {
+	return &Database{
+		mgr: mgr,
+	}
+}
+
 // Peers returns the interface for managing nodes in the mesh.
 func (db *Database) Peers() storage.Peers {
 	return NewPeers(db.mgr.GetClient())
