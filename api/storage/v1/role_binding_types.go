@@ -23,7 +23,7 @@ import (
 
 // RoleBindingSpec defines the desired state of a RoleBinding.
 type RoleBindingSpec struct {
-	Role types.RoleBinding `json:",inline"`
+	RoleBinding types.RoleBinding `json:",inline"`
 }
 
 // RoleBindingStatus defines the observed state of a RoleBinding.
@@ -37,8 +37,8 @@ type RoleBinding struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PeerSpec   `json:"spec,omitempty"`
-	Status PeerStatus `json:"status,omitempty"`
+	Spec   RoleBindingSpec   `json:"spec,omitempty"`
+	Status RoleBindingStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

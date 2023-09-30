@@ -37,8 +37,8 @@ type Role struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PeerSpec   `json:"spec,omitempty"`
-	Status PeerStatus `json:"status,omitempty"`
+	Spec   RoleSpec   `json:"spec,omitempty"`
+	Status RoleStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

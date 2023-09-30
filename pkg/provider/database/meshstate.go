@@ -75,7 +75,7 @@ func (st *MeshState) SetIPv6Prefix(ctx context.Context, prefix netip.Prefix) err
 		return err
 	}
 	state.Spec.IPv6Prefix = prefix.String()
-	return patchState(ctx, st.cli, state)
+	return util.PatchObject(ctx, st.cli, state)
 }
 
 // GetIPv4Prefix returns the IPv4 prefix.
@@ -101,7 +101,7 @@ func (st *MeshState) SetIPv4Prefix(ctx context.Context, prefix netip.Prefix) err
 		return err
 	}
 	state.Spec.IPv4Prefix = prefix.String()
-	return patchState(ctx, st.cli, state)
+	return util.PatchObject(ctx, st.cli, state)
 }
 
 // GetMeshDomain returns the mesh domain.
@@ -127,7 +127,7 @@ func (st *MeshState) SetMeshDomain(ctx context.Context, domain string) error {
 		return err
 	}
 	state.Spec.MeshDomain = domain
-	return patchState(ctx, st.cli, state)
+	return util.PatchObject(ctx, st.cli, state)
 }
 
 // fetchState fetches the current state.
@@ -143,26 +143,11 @@ func (st *MeshState) fetchState(ctx context.Context) (*storagev1.MeshState, erro
 			return &storagev1.MeshState{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "MeshState",
-					APIVersion: "storage.webmesh.io/v1",
+					APIVersion: storagev1.GroupVersion.String(),
 				},
 			}, nil
 		}
 		return nil, fmt.Errorf("fetch mesh state: %w", err)
 	}
 	return &state, nil
-}
-
-func patchState(ctx context.Context, cli client.Client, state *storagev1.MeshState) error {
-	util.StripPatchMeta(&state.ObjectMeta)
-	err := cli.Patch(
-		ctx,
-		state,
-		client.Apply,
-		client.ForceOwnership,
-		client.FieldOwner(storagev1.FieldOwner),
-	)
-	if err != nil {
-		return fmt.Errorf("patch mesh state: %w", err)
-	}
-	return nil
 }

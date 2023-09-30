@@ -34,7 +34,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
 	"github.com/webmeshproj/storage-provider-k8s/pkg/provider/util"
 )
 
@@ -315,7 +314,6 @@ func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret, rawBu
 			return fmt.Errorf("delete bucket secret: %w", err)
 		}
 	}
-	util.StripPatchMeta(&bucket.ObjectMeta)
 	bucket.TypeMeta = metav1.TypeMeta{
 		Kind:       "Secret",
 		APIVersion: "v1",
@@ -324,13 +322,8 @@ func (st *Storage) patchBucket(ctx context.Context, bucket *corev1.Secret, rawBu
 		MeshStorageLabel: "true",
 		BucketLabel:      rawBucketName,
 	}
-	bucket.ObjectMeta.ManagedFields = nil
 	st.trace(ctx, "Patching bucket", "bucket", bucket.Name)
-	err := st.mgr.GetClient().Patch(ctx, bucket, client.Apply, client.ForceOwnership, client.FieldOwner(storagev1.FieldOwner))
-	if err != nil {
-		return fmt.Errorf("patch bucket secret: %w", err)
-	}
-	return nil
+	return util.PatchObject(ctx, st.mgr.GetClient(), bucket)
 }
 
 func (st *Storage) bucketsForPrefix(ctx context.Context, prefix []byte) ([]*corev1.Secret, error) {

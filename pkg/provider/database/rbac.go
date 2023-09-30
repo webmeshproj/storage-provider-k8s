@@ -18,10 +18,18 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"github.com/webmeshproj/webmesh/pkg/storage"
+	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
+	"github.com/webmeshproj/storage-provider-k8s/pkg/provider/util"
 )
 
 // Ensure we implement the interface.
@@ -41,39 +49,113 @@ func NewRBAC(cli client.Client, namespace string) *RBAC {
 	}
 }
 
+// RBACEnabledConfigMap is the name of the ConfigMap that stores the RBAC enabled state.
+const RBACEnabledConfigMap = "webmesh-rbac-enabled"
+
 // SetEnabled sets the RBAC enabled state.
 func (r *RBAC) SetEnabled(ctx context.Context, enabled bool) error {
-	return nil
+	var cm corev1.ConfigMap
+	err := r.cli.Get(ctx, client.ObjectKey{
+		Namespace: r.namespace,
+		Name:      RBACEnabledConfigMap,
+	}, &cm)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return err
+		}
+		// Create a new ConfigMap.
+		cm = corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ConfigMap",
+				APIVersion: corev1.SchemeGroupVersion.String(),
+			},
+		}
+	}
+	if cm.Data == nil {
+		cm.Data = map[string]string{}
+	}
+	cm.Data["enabled"] = fmt.Sprintf("%v", enabled)
+	return util.PatchObject(ctx, r.cli, &cm)
 }
 
 // GetEnabled returns the RBAC enabled state.
 func (r *RBAC) GetEnabled(ctx context.Context) (bool, error) {
-	return false, nil
+	var cm corev1.ConfigMap
+	err := r.cli.Get(ctx, client.ObjectKey{
+		Namespace: r.namespace,
+		Name:      RBACEnabledConfigMap,
+	}, &cm)
+	if err != nil {
+		return false, client.IgnoreNotFound(err)
+	}
+	if cm.Data == nil {
+		return false, nil
+	}
+	return strconv.ParseBool(cm.Data["enabled"])
 }
 
 // PutRole creates or updates a role.
 func (r *RBAC) PutRole(ctx context.Context, role types.Role) error {
-	return nil
+	var strole storagev1.Role
+	strole.Spec.Role = role
+	return util.PatchObject(ctx, r.cli, &strole)
 }
 
 // GetRole returns a role by name.
 func (r *RBAC) GetRole(ctx context.Context, name string) (types.Role, error) {
-	return types.Role{}, nil
+	var strole storagev1.Role
+	err := r.cli.Get(ctx, client.ObjectKey{
+		Namespace: r.namespace,
+		Name:      name,
+	}, &strole)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return types.Role{}, fmt.Errorf("get role: %w", err)
+		}
+		return types.Role{}, errors.ErrRoleNotFound
+	}
+	return strole.Spec.Role, nil
 }
 
 // DeleteRole deletes a role by name.
 func (r *RBAC) DeleteRole(ctx context.Context, name string) error {
-	return nil
+	err := r.cli.Delete(ctx, &storagev1.Role{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Role",
+			APIVersion: storagev1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: r.namespace,
+			Name:      name,
+		},
+	})
+	return client.IgnoreNotFound(err)
 }
 
 // ListRoles returns a list of all roles.
 func (r *RBAC) ListRoles(ctx context.Context) (types.RolesList, error) {
-	return nil, nil
+	var roles storagev1.RoleList
+	err := r.cli.List(ctx, &roles, &client.ListOptions{
+		Namespace: r.namespace,
+	})
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return nil, fmt.Errorf("list roles: %w", err)
+		}
+		return nil, nil
+	}
+	out := make(types.RolesList, len(roles.Items))
+	for i, role := range roles.Items {
+		out[i] = role.Spec.Role
+	}
+	return out, nil
 }
 
 // PutRoleBinding creates or updates a rolebinding.
 func (r *RBAC) PutRoleBinding(ctx context.Context, rolebinding types.RoleBinding) error {
-	return nil
+	var rb storagev1.RoleBinding
+	rb.Spec.RoleBinding = rolebinding
+	return util.PatchObject(ctx, r.cli, &rb)
 }
 
 // GetRoleBinding returns a rolebinding by name.

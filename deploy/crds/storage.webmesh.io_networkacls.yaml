@@ -32,73 +32,54 @@ spec:
           metadata:
             type: object
           spec:
-            description: PeerSpec defines the desired state of a Peer.
+            description: NetworkACLSpec defines the desired state of a NetworkACL.
             properties:
-              features:
-                description: features are a list of features and the ports they are
-                  advertised on.
-                items:
-                  description: FeaturePort describes a feature and the port it is
-                    advertised on.
-                  properties:
-                    feature:
-                      description: feature is the feature.
-                      format: int32
-                      type: integer
-                    port:
-                      description: port is the port the feature is advertised on.
-                      format: int32
-                      type: integer
-                  type: object
-                type: array
-              id:
-                description: id is the ID of the node.
-                type: string
-              joined_at:
-                description: joined_at is the time the node joined the cluster.
-                properties:
-                  nanos:
-                    description: Non-negative fractions of a second at nanosecond
-                      resolution. Negative second values with fractions must still
-                      have non-negative nanos values that count forward in time. Must
-                      be from 0 to 999,999,999 inclusive.
-                    format: int32
-                    type: integer
-                  seconds:
-                    description: Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
-                      Must be from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z inclusive.
-                    format: int64
-                    type: integer
-                type: object
-              multiaddrs:
-                description: multiaddrs are the multiaddrs of the node.
+              action:
+                description: action is the action to take when a request matches the
+                  ACL.
+                format: int32
+                type: integer
+              destination_cidrs:
+                description: destination_cidrs is a list of destination CIDRs to match
+                  against. If empty, all CIDRs are matched. If one or more of the
+                  CIDRs is '*', all CIDRs are matched.
                 items:
                   type: string
                 type: array
-              primary_endpoint:
-                description: primary_endpoint is the primary endpoint of the node.
-                type: string
-              private_ipv4:
-                description: private_ipv4 is the private IPv4 address of the node.
-                type: string
-              private_ipv6:
-                description: private_ipv6 is the private IPv6 address of the node.
-                type: string
-              public_key:
-                description: public_key is the public key of the node.
-                type: string
-              wireguard_endpoints:
-                description: wireguard_endpoints is a list of WireGuard endpoints
-                  for the node.
+              destination_nodes:
+                description: destination_nodes is a list of destination nodes to match
+                  against. If empty, all nodes are matched. Groups can be specified
+                  with the prefix "group:". If one or more of the nodes is '*', all
+                  nodes are matched.
                 items:
                   type: string
                 type: array
-              zone_awareness_id:
-                description: zone_awareness_id is the zone awareness ID of the node.
+              name:
+                description: name is the name of the ACL.
                 type: string
+              priority:
+                description: priority is the priority of the ACL. ACLs with higher
+                  priority are evaluated first.
+                format: int32
+                type: integer
+              source_cidrs:
+                description: source_cidrs is a list of source CIDRs to match against.
+                  If empty, all CIDRs are matched. If one or more of the CIDRs is
+                  '*', all CIDRs are matched.
+                items:
+                  type: string
+                type: array
+              source_nodes:
+                description: source_nodes is a list of source nodes to match against.
+                  If empty, all nodes are matched. Groups can be specified with the
+                  prefix "group:". If one or more of the nodes is '*', all nodes are
+                  matched.
+                items:
+                  type: string
+                type: array
             type: object
           status:
-            description: PeerStatus defines the observed state of a Peer.
+            description: NetworkACLStatus defines the observed state of a NetworkACL.
             type: object
         type: object
     served: true

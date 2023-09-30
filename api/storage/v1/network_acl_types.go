@@ -37,8 +37,8 @@ type NetworkACL struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PeerSpec   `json:"spec,omitempty"`
-	Status PeerStatus `json:"status,omitempty"`
+	Spec   NetworkACLSpec   `json:"spec,omitempty"`
+	Status NetworkACLStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
