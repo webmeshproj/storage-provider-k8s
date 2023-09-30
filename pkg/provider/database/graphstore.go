@@ -25,6 +25,12 @@ import (
 // Ensure we implement the interface.
 var _ types.PeerGraphStore = &GraphStore{}
 
+// EdgeSourceLabel is the label used to store the source node ID.
+const EdgeSourceLabel = "webmesh.io/edge-source"
+
+// EdgeTargetLabel is the label used to store the target node ID.
+const EdgeTargetLabel = "webmesh.io/edge-target"
+
 // GraphStore implements the PeerGraphStore interface.
 type GraphStore struct {
 	cli       client.Client
