@@ -29,37 +29,45 @@ var _ storage.MeshDB = &Database{}
 
 // Database is a MeshDB implementation using Kubernetes custom resources.
 type Database struct {
-	mgr manager.Manager
+	peers   *Peers
+	graph   types.PeerGraph
+	rbac    *RBAC
+	state   *MeshState
+	network *Networking
 }
 
 // New returns a new Database instance.
 func New(mgr manager.Manager) *Database {
 	return &Database{
-		mgr: mgr,
+		peers:   NewPeers(mgr.GetClient()),
+		graph:   types.NewGraphWithStore(NewGraphStore(mgr.GetClient())),
+		rbac:    NewRBAC(mgr.GetClient()),
+		state:   NewMeshState(mgr.GetClient()),
+		network: NewNetworking(mgr.GetClient()),
 	}
 }
 
 // Peers returns the interface for managing nodes in the mesh.
 func (db *Database) Peers() storage.Peers {
-	return NewPeers(db.mgr.GetClient())
+	return db.peers
 }
 
 // PeerGraph returns the interface for querying the peer graph.
 func (db *Database) PeerGraph() types.PeerGraph {
-	return types.NewGraphWithStore(NewGraphStore(db.mgr.GetClient()))
+	return db.graph
 }
 
 // RBAC returns the interface for managing RBAC policies in the mesh.
 func (db *Database) RBAC() storage.RBAC {
-	return NewRBAC(db.mgr.GetClient())
+	return db.rbac
 }
 
 // MeshState returns the interface for querying mesh state.
 func (db *Database) MeshState() storage.MeshState {
-	return NewMeshState(db.mgr.GetClient())
+	return db.state
 }
 
 // Networking returns the interface for managing networking in the mesh.
 func (db *Database) Networking() storage.Networking {
-	return NewNetworking(db.mgr.GetClient())
+	return db.network
 }

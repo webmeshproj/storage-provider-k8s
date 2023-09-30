@@ -40,6 +40,9 @@ func NewPeers(cli client.Client) *Peers {
 	}
 }
 
+// PublicKeyLabel is the label used to store the public key.
+const PublicKeyLabel = "webmesh.io/public-key"
+
 // Put creates or updates a node.
 func (p *Peers) Put(ctx context.Context, n types.MeshNode) error {
 	return nil

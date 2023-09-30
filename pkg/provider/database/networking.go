@@ -60,6 +60,13 @@ func (nw *Networking) ListNetworkACLs(ctx context.Context) (types.NetworkACLs, e
 	return nil, nil
 }
 
+// RouteNodeLabel is the label used to store the node ID.
+const RouteNodeLabel = "webmesh.io/node-id"
+
+// RouteCIDRsLabel is the label used to store the CIDRs as a comma separated string
+// for faster lookups.
+const RouteCIDRsLabel = "webmesh.io/cidrs"
+
 // PutRoute creates or updates a Route.
 func (nw *Networking) PutRoute(ctx context.Context, route types.Route) error {
 	return nil
