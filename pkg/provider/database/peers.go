@@ -25,6 +25,7 @@ import (
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
@@ -231,4 +232,8 @@ func (p *Peers) RemoveEdge(ctx context.Context, from, to types.NodeID) error {
 		},
 	})
 	return client.IgnoreNotFound(err)
+}
+
+func (p *Peers) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	return ctrl.Result{}, nil
 }

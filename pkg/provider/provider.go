@@ -116,7 +116,6 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 	p := &Provider{
 		Options: options,
 		mgr:     mgr,
-		db:      database.New(mgr, options.Namespace),
 		subs:    make(map[string]Subscription),
 		errc:    make(chan error, 1),
 		log:     ctrl.Log.WithName("storage-provider"),
@@ -144,6 +143,11 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 		Complete(p)
 	if err != nil {
 		return nil, fmt.Errorf("register controller: %w", err)
+	}
+	// Register the database with the manager
+	p.db, err = database.New(mgr, options.Namespace)
+	if err != nil {
+		return nil, fmt.Errorf("create database: %w", err)
 	}
 	// Create clients for leader election
 	cfg := rest.CopyConfig(p.mgr.GetConfig())

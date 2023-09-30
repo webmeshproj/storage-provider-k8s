@@ -33,6 +33,9 @@ import (
 // Ensure we implement the interface.
 var _ storage.Networking = &Networking{}
 
+// RouteNodeLabel is the label used to store the node ID.
+const RouteNodeLabel = "webmesh.io/node-id"
+
 // Networking implements the Networking interface.
 type Networking struct {
 	cli       client.Client
@@ -109,9 +112,6 @@ func (nw *Networking) ListNetworkACLs(ctx context.Context) (types.NetworkACLs, e
 	}
 	return acls, nil
 }
-
-// RouteNodeLabel is the label used to store the node ID.
-const RouteNodeLabel = "webmesh.io/node-id"
 
 // PutRoute creates or updates a Route.
 func (nw *Networking) PutRoute(ctx context.Context, route types.Route) error {
