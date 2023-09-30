@@ -37,6 +37,7 @@ var _ storage.Peers = &Peers{}
 // Peers implements the Peers interface.
 type Peers struct {
 	cli       client.Client
+	graph     types.PeerGraph
 	namespace string
 }
 
@@ -44,6 +45,7 @@ type Peers struct {
 func NewPeers(cli client.Client, namespace string) *Peers {
 	return &Peers{
 		cli:       cli,
+		graph:     types.NewGraphWithStore(NewGraphStore(cli, namespace)),
 		namespace: namespace,
 	}
 }
@@ -109,7 +111,20 @@ func (p *Peers) GetByPubKey(ctx context.Context, key crypto.PublicKey) (types.Me
 
 // Delete deletes a node.
 func (p *Peers) Delete(ctx context.Context, id types.NodeID) error {
-	err := p.cli.Delete(ctx, &storagev1.Peer{
+	// First check for and remove any edges
+	edges, err := p.graph.Edges()
+	if err != nil {
+		return fmt.Errorf("get edges: %w", err)
+	}
+	for _, edge := range edges {
+		if edge.Source.String() == id.String() || edge.Target.String() == id.String() {
+			err = p.graph.RemoveEdge(edge.Source, edge.Target)
+			if err != nil {
+				return fmt.Errorf("remove edge: %w", err)
+			}
+		}
+	}
+	err = p.cli.Delete(ctx, &storagev1.Peer{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1.GroupVersion.String(),
 			Kind:       "Peer",
