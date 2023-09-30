@@ -57,11 +57,11 @@ type Options struct {
 	// NodeID is the ID of the node.
 	NodeID string
 	// ListenAddr is the address to bind the webhook server to.
-	ListenAddr string
+	ListenPort int
 	// MetricsAddr is the address to bind the metrics endpoint to.
-	MetricsAddr string
+	MetricsPort int
 	// ProbeAddr is the address to bind the health probe endpoint to.
-	ProbeAddr string
+	ProbePort int
 	// ShutdownTimeout is the timeout for shutting down the provider.
 	ShutdownTimeout time.Duration
 	// Namespace is the namespace to use for leader election and storage.
@@ -78,6 +78,7 @@ type Options struct {
 type Provider struct {
 	Options
 	started   atomic.Bool
+	laddr     net.Addr
 	lport     uint16
 	mgr       manager.Manager
 	storage   *Storage
@@ -93,14 +94,14 @@ type Provider struct {
 
 // New creates a new Provider.
 func New(options Options) (*Provider, error) {
-	laddr, err := net.ResolveTCPAddr("tcp", options.ListenAddr)
+	laddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("[::]:%d", options.ListenPort))
 	if err != nil {
 		return nil, fmt.Errorf("resolve listen address: %w", err)
 	}
 	mgr, err := manager.New(manager.Options{
 		WebhookPort:     laddr.Port,
-		MetricsAddr:     options.MetricsAddr,
-		ProbeAddr:       options.ProbeAddr,
+		MetricsPort:     options.MetricsPort,
+		ProbePort:       options.ProbePort,
 		ShutdownTimeout: options.ShutdownTimeout,
 	})
 	if err != nil {
@@ -120,10 +121,11 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 	}
 	p.storage = &Storage{Provider: p}
 	p.consensus = &Consensus{Provider: p}
-	laddr, err := net.ResolveTCPAddr("tcp", options.ListenAddr)
+	laddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("[::]:%d", options.ListenPort))
 	if err != nil {
 		return nil, fmt.Errorf("resolve listen address: %w", err)
 	}
+	p.laddr = laddr
 	p.lport = uint16(laddr.Port)
 	if p.Namespace == "" {
 		var err error
@@ -290,7 +292,7 @@ func (p *Provider) Status() *v1.StorageStatus {
 			Peers: []*v1.StoragePeer{
 				{
 					Id:            p.NodeID,
-					Address:       p.ListenAddr,
+					Address:       p.laddr.String(),
 					ClusterStatus: v1.ClusterStatus_CLUSTER_NODE,
 				},
 			},
@@ -309,7 +311,7 @@ func (p *Provider) Status() *v1.StorageStatus {
 			Peers: []*v1.StoragePeer{
 				{
 					Id:            p.NodeID,
-					Address:       p.ListenAddr,
+					Address:       p.laddr.String(),
 					ClusterStatus: v1.ClusterStatus_CLUSTER_NODE,
 				},
 			},

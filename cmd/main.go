@@ -45,8 +45,8 @@ func init() {
 func main() {
 	var opts provider.Options
 	logopts := zap.Options{Development: true}
-	flag.StringVar(&opts.MetricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&opts.ProbeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.IntVar(&opts.MetricsPort, "metrics-bind-address", 8080, "The address the metric endpoint binds to.")
+	flag.IntVar(&opts.ProbePort, "health-probe-bind-address", 8081, "The address the probe endpoint binds to.")
 	flag.StringVar(&opts.Namespace, "namespace", os.Getenv("NAMESPACE"), "The namespace in which to operate. Defaults to the namespace of the controller object or the NAMESPACE environment variable.")
 	flag.DurationVar(&opts.LeaderElectionLeaseDuration, "leader-lease-duration", 10*time.Second, "The duration that non-leader candidates will wait to force acquire leadership. This is measured against time of last observed ack.")
 	flag.DurationVar(&opts.LeaderElectionRenewDeadline, "leader-renew-deadline", 5*time.Second, "The duration that the acting leader will retry refreshing leadership before giving up.")
@@ -55,19 +55,16 @@ func main() {
 	logopts.BindFlags(flag.CommandLine)
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&logopts)))
-
 	setupLog.Info("Starting Webmesh Storage Provider for Kubernetes",
 		"version", version.Version,
 		"git-commit", version.Commit,
 		"build-date", version.BuildDate,
 	)
-
 	provider, err := provider.New(opts)
 	if err != nil {
 		setupLog.Error(err, "Failed to create storage provider")
 		os.Exit(1)
 	}
-
 	if err := provider.Start(context.Background()); err != nil {
 		setupLog.Error(err, "Failed to start storage provider")
 		os.Exit(1)

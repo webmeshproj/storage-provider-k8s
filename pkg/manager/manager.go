@@ -18,6 +18,7 @@ limitations under the License.
 package manager
 
 import (
+	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -40,9 +41,9 @@ type Options struct {
 	// WebhookPort is the address to bind the webhook server to.
 	WebhookPort int
 	// MetricsAddr is the address to bind the metrics endpoint to.
-	MetricsAddr string
+	MetricsPort int
 	// ProbeAddr is the address to bind the health probe endpoint to.
-	ProbeAddr string
+	ProbePort int
 	// ShutdownTimeout is the timeout for shutting down the manager.
 	ShutdownTimeout time.Duration
 	// DisableCache disables the controller-runtime cache. This is primarily
@@ -62,11 +63,21 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 	if err != nil {
 		return nil, err
 	}
+	probeAddr := "0"
+	if opts.ProbePort != 0 {
+		probeAddr = fmt.Sprintf("[::]:%d", opts.ProbePort)
+	}
+	metricsAddr := "0"
+	if opts.MetricsPort != 0 {
+		metricsAddr = fmt.Sprintf("[::]:%d", opts.MetricsPort)
+	}
 	mgropts := ctrl.Options{
 		Scheme:                  scheme,
 		GracefulShutdownTimeout: &opts.ShutdownTimeout,
-		HealthProbeBindAddress:  opts.ProbeAddr,
-		Metrics:                 server.Options{BindAddress: opts.MetricsAddr},
+		HealthProbeBindAddress:  probeAddr,
+		Metrics: server.Options{
+			BindAddress: metricsAddr,
+		},
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port: opts.WebhookPort,
 		}),
@@ -87,7 +98,7 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	if opts.ProbeAddr != "" && opts.ProbeAddr != "0" {
+	if opts.ProbePort != 0 {
 		if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 			return nil, err
 		}

@@ -61,8 +61,8 @@ func setupTestProviders(t *testing.T, count int) []storage.Provider {
 			ShutdownTimeout: time.Second * 3,
 			DisableCache:    true,
 			WebhookPort:     0,
-			MetricsAddr:     "0",
-			ProbeAddr:       "0",
+			MetricsPort:     0,
+			ProbePort:       0,
 		})
 		if err != nil {
 			t.Fatal("Failed to create manager", i, err)
@@ -71,7 +71,7 @@ func setupTestProviders(t *testing.T, count int) []storage.Provider {
 		t.Log("Creating new provider", i, "ID:", nodeID)
 		provider, err := NewWithManager(mgr, Options{
 			NodeID:                      nodeID,
-			ListenAddr:                  fmt.Sprintf("[::]:%d", 9080+i),
+			ListenPort:                  9080 + i,
 			Namespace:                   "default",
 			LeaderElectionLeaseDuration: time.Second * 3,
 			LeaderElectionRenewDeadline: time.Second * 1,

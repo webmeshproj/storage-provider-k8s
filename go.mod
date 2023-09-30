@@ -3,10 +3,11 @@ module github.com/webmeshproj/storage-provider-k8s
 go 1.21.1
 
 require (
+	github.com/dominikbraun/graph v0.23.0
 	github.com/go-logr/logr v1.2.4
 	github.com/google/uuid v1.3.1
 	github.com/webmeshproj/api v0.6.2
-	github.com/webmeshproj/webmesh v0.9.4
+	github.com/webmeshproj/webmesh v0.9.5
 	google.golang.org/protobuf v1.31.0
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
@@ -22,7 +23,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/dgraph-io/badger/v4 v4.2.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
-	github.com/dominikbraun/graph v0.23.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
