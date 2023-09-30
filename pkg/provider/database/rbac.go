@@ -99,6 +99,9 @@ func (r *RBAC) GetEnabled(ctx context.Context) (bool, error) {
 
 // PutRole creates or updates a role.
 func (r *RBAC) PutRole(ctx context.Context, role types.Role) error {
+	if err := role.Validate(); err != nil {
+		return err
+	}
 	var strole storagev1.Role
 	strole.ObjectMeta = metav1.ObjectMeta{
 		Namespace: r.namespace,
@@ -164,6 +167,9 @@ func (r *RBAC) ListRoles(ctx context.Context) (types.RolesList, error) {
 
 // PutRoleBinding creates or updates a rolebinding.
 func (r *RBAC) PutRoleBinding(ctx context.Context, rolebinding types.RoleBinding) error {
+	if err := rolebinding.Validate(); err != nil {
+		return err
+	}
 	var rb storagev1.RoleBinding
 	rb.TypeMeta = metav1.TypeMeta{
 		Kind:       "RoleBinding",
@@ -229,6 +235,9 @@ func (r *RBAC) ListRoleBindings(ctx context.Context) ([]types.RoleBinding, error
 
 // PutGroup creates or updates a group.
 func (r *RBAC) PutGroup(ctx context.Context, group types.Group) error {
+	if err := group.Validate(); err != nil {
+		return err
+	}
 	var stgroup storagev1.Group
 	stgroup.ObjectMeta = metav1.ObjectMeta{
 		Namespace: r.namespace,

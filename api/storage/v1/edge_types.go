@@ -23,7 +23,7 @@ import (
 
 // MeshEdgeSpec defines the desired state of a MeshEdge.
 type MeshEdgeSpec struct {
-	MeshEdge types.MeshEdge `json:",inline"`
+	MeshEdge types.MeshEdge `json:"meshEdge"`
 }
 
 // MeshEdgeStatus defines the observed state of a MeshEdge.

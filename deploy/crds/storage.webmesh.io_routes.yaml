@@ -34,22 +34,29 @@ spec:
           spec:
             description: RouteSpec defines the desired state of a Route.
             properties:
-              destination_cidrs:
-                description: destination_cidrs are the destination CIDRs of the route.
-                items:
-                  type: string
-                type: array
-              name:
-                description: name is the name of the route.
-                type: string
-              next_hop_node:
-                description: next_hop_node is an optional node that is used as the
-                  next hop for the route.
-                type: string
-              node:
-                description: node is the node that broadcasts the route. A group can
-                  be specified with the prefix "group:".
-                type: string
+              route:
+                description: Route wraps a Route.
+                properties:
+                  destinationCIDRs:
+                    description: destination_cidrs are the destination CIDRs of the
+                      route.
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    description: name is the name of the route.
+                    type: string
+                  nextHopNode:
+                    description: nextHopNode is an optional node that is used as the
+                      next hop for the route.
+                    type: string
+                  node:
+                    description: node is the node that broadcasts the route. A group
+                      can be specified with the prefix "group:".
+                    type: string
+                type: object
+            required:
+            - route
             type: object
           status:
             description: RouteStatus defines the observed state of a Route.

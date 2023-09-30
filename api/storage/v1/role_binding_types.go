@@ -23,7 +23,7 @@ import (
 
 // RoleBindingSpec defines the desired state of a RoleBinding.
 type RoleBindingSpec struct {
-	RoleBinding types.RoleBinding `json:",inline"`
+	RoleBinding types.RoleBinding `json:"roleBinding"`
 }
 
 // RoleBindingStatus defines the observed state of a RoleBinding.

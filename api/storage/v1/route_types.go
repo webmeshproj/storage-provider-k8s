@@ -23,7 +23,7 @@ import (
 
 // RouteSpec defines the desired state of a Route.
 type RouteSpec struct {
-	Route types.Route `json:",inline"`
+	Route types.Route `json:"route"`
 }
 
 // RouteStatus defines the observed state of a Route.

@@ -18,6 +18,7 @@ package database
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 
 	"github.com/webmeshproj/webmesh/pkg/crypto"
@@ -57,9 +58,32 @@ func NewPeers(cli client.Client, namespace string) *Peers {
 // PublicKeyLabel is the label used to store the public key.
 const PublicKeyLabel = "webmesh.io/public-key"
 
+// SumKey sums the key into a compatible label value.
+func SumKey(key crypto.PublicKey) (string, error) {
+	encoded, err := key.Raw()
+	if err != nil {
+		return "", err
+	}
+	return HashEncodedKey(fmt.Sprintf("%x", encoded))
+}
+
+// HashEncodedKey hashes the encoded key into a compatible label value.
+func HashEncodedKey(encoded string) (string, error) {
+	h := sha1.New()
+	_, err := h.Write([]byte(encoded))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
 // Put creates or updates a node.
 func (p *Peers) Put(ctx context.Context, n types.MeshNode) error {
 	var peer storagev1.Peer
+	hashedKey, err := HashEncodedKey(n.GetPublicKey())
+	if err != nil {
+		return err
+	}
 	peer.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
 		Kind:       "Peer",
@@ -68,7 +92,7 @@ func (p *Peers) Put(ctx context.Context, n types.MeshNode) error {
 		Namespace: p.namespace,
 		Name:      n.GetId(),
 		Labels: map[string]string{
-			PublicKeyLabel: n.GetPublicKey(),
+			PublicKeyLabel: hashedKey,
 		},
 	}
 	peer.Spec.Node = n
@@ -93,7 +117,7 @@ func (p *Peers) Get(ctx context.Context, id types.NodeID) (types.MeshNode, error
 
 // GetByPubKey gets a node by their public key.
 func (p *Peers) GetByPubKey(ctx context.Context, key crypto.PublicKey) (types.MeshNode, error) {
-	encoded, err := key.Encode()
+	encoded, err := SumKey(key)
 	if err != nil {
 		return types.MeshNode{}, err
 	}
@@ -193,7 +217,7 @@ func (p *Peers) PutEdge(ctx context.Context, edge types.MeshEdge) error {
 	}
 	edg.ObjectMeta = metav1.ObjectMeta{
 		Namespace: p.namespace,
-		Name:      edge.SourceID().String() + "_" + edge.TargetID().String(),
+		Name:      edge.SourceID().String() + "-" + edge.TargetID().String(),
 		Labels: map[string]string{
 			EdgeSourceLabel: edge.SourceID().String(),
 			EdgeTargetLabel: edge.TargetID().String(),
@@ -231,7 +255,7 @@ func (p *Peers) RemoveEdge(ctx context.Context, from, to types.NodeID) error {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: p.namespace,
-			Name:      from.String() + "_" + to.String(),
+			Name:      from.String() + "-" + to.String(),
 		},
 	})
 	return client.IgnoreNotFound(err)

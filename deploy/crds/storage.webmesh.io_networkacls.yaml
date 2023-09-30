@@ -34,49 +34,55 @@ spec:
           spec:
             description: NetworkACLSpec defines the desired state of a NetworkACL.
             properties:
-              action:
-                description: action is the action to take when a request matches the
-                  ACL.
-                format: int32
-                type: integer
-              destination_cidrs:
-                description: destination_cidrs is a list of destination CIDRs to match
-                  against. If empty, all CIDRs are matched. If one or more of the
-                  CIDRs is '*', all CIDRs are matched.
-                items:
-                  type: string
-                type: array
-              destination_nodes:
-                description: destination_nodes is a list of destination nodes to match
-                  against. If empty, all nodes are matched. Groups can be specified
-                  with the prefix "group:". If one or more of the nodes is '*', all
-                  nodes are matched.
-                items:
-                  type: string
-                type: array
-              name:
-                description: name is the name of the ACL.
-                type: string
-              priority:
-                description: priority is the priority of the ACL. ACLs with higher
-                  priority are evaluated first.
-                format: int32
-                type: integer
-              source_cidrs:
-                description: source_cidrs is a list of source CIDRs to match against.
-                  If empty, all CIDRs are matched. If one or more of the CIDRs is
-                  '*', all CIDRs are matched.
-                items:
-                  type: string
-                type: array
-              source_nodes:
-                description: source_nodes is a list of source nodes to match against.
-                  If empty, all nodes are matched. Groups can be specified with the
-                  prefix "group:". If one or more of the nodes is '*', all nodes are
-                  matched.
-                items:
-                  type: string
-                type: array
+              networkACL:
+                description: NetworkACL is a Network ACL.
+                properties:
+                  action:
+                    description: action is the action to take when a request matches
+                      the ACL.
+                    format: int32
+                    type: integer
+                  destinationCIDRs:
+                    description: destination_cidrs is a list of destination CIDRs
+                      to match against. If empty, all CIDRs are matched. If one or
+                      more of the CIDRs is '*', all CIDRs are matched.
+                    items:
+                      type: string
+                    type: array
+                  destinationNodes:
+                    description: destination_nodes is a list of destination nodes
+                      to match against. If empty, all nodes are matched. Groups can
+                      be specified with the prefix "group:". If one or more of the
+                      nodes is '*', all nodes are matched.
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    description: name is the name of the ACL.
+                    type: string
+                  priority:
+                    description: priority is the priority of the ACL. ACLs with higher
+                      priority are evaluated first.
+                    format: int32
+                    type: integer
+                  sourceCIDRs:
+                    description: source_cidrs is a list of source CIDRs to match against.
+                      If empty, all CIDRs are matched. If one or more of the CIDRs
+                      is '*', all CIDRs are matched.
+                    items:
+                      type: string
+                    type: array
+                  sourceNodes:
+                    description: source_nodes is a list of source nodes to match against.
+                      If empty, all nodes are matched. Groups can be specified with
+                      the prefix "group:". If one or more of the nodes is '*', all
+                      nodes are matched.
+                    items:
+                      type: string
+                    type: array
+                type: object
+            required:
+            - networkACL
             type: object
           status:
             description: NetworkACLStatus defines the observed state of a NetworkACL.

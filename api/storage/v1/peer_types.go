@@ -23,7 +23,7 @@ import (
 
 // PeerSpec defines the desired state of a Peer.
 type PeerSpec struct {
-	Node types.MeshNode `json:",inline"`
+	Node types.MeshNode `json:"node"`
 }
 
 // PeerStatus defines the observed state of a Peer.

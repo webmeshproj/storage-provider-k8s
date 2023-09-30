@@ -23,7 +23,7 @@ import (
 
 // NetworkACLSpec defines the desired state of a NetworkACL.
 type NetworkACLSpec struct {
-	NetworkACL types.NetworkACL `json:",inline"`
+	NetworkACL types.NetworkACL `json:"networkACL"`
 }
 
 // NetworkACLStatus defines the observed state of a NetworkACL.

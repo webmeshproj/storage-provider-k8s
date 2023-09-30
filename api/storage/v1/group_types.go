@@ -23,7 +23,7 @@ import (
 
 // GroupSpec defines the desired state of a Group.
 type GroupSpec struct {
-	Group types.Group `json:",inline"`
+	Group types.Group `json:"group"`
 }
 
 // GroupStatus defines the observed state of a Group.
@@ -51,5 +51,5 @@ type GroupList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&Peer{}, &PeerList{})
+	SchemeBuilder.Register(&Group{}, &GroupList{})
 }

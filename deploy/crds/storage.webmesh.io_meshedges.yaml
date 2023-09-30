@@ -34,21 +34,27 @@ spec:
           spec:
             description: MeshEdgeSpec defines the desired state of a MeshEdge.
             properties:
-              attributes:
-                additionalProperties:
-                  type: string
-                description: attributes is a list of attributes for the edge.
+              meshEdge:
+                description: MeshEdge wraps a mesh edge.
+                properties:
+                  attributes:
+                    additionalProperties:
+                      type: string
+                    description: attributes is a list of attributes for the edge.
+                    type: object
+                  source:
+                    description: source is the source node.
+                    type: string
+                  target:
+                    description: target is the target node.
+                    type: string
+                  weight:
+                    description: weight is the weight of the edge.
+                    format: int32
+                    type: integer
                 type: object
-              source:
-                description: source is the source node.
-                type: string
-              target:
-                description: target is the target node.
-                type: string
-              weight:
-                description: weight is the weight of the edge.
-                format: int32
-                type: integer
+            required:
+            - meshEdge
             type: object
           status:
             description: MeshEdgeStatus defines the observed state of a MeshEdge.

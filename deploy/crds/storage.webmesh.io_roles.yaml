@@ -34,36 +34,44 @@ spec:
           spec:
             description: RoleSpec defines the desired state of a Role.
             properties:
-              name:
-                description: name is the name of the role.
-                type: string
-              rules:
-                description: rules is the list of rules that apply to the role.
-                items:
-                  description: Rule is a rule that applies to a resource.
-                  properties:
-                    resource_names:
-                      description: resource_names is the list of resource names to
-                        which the rule applies.
-                      items:
-                        type: string
-                      type: array
-                    resources:
-                      description: resources is the resources to which the rule applies.
-                      items:
-                        description: RuleResource is the resource type for a rule.
-                        format: int32
-                        type: integer
-                      type: array
-                    verbs:
-                      description: verbs is the list of verbs that apply to the resource.
-                      items:
-                        description: RuleVerb is the verb type for a rule.
-                        format: int32
-                        type: integer
-                      type: array
-                  type: object
-                type: array
+              role:
+                description: Role wraps a role.
+                properties:
+                  name:
+                    description: name is the name of the role.
+                    type: string
+                  rules:
+                    description: rules is the list of rules that apply to the role.
+                    items:
+                      description: Rule is a rule that applies to a resource.
+                      properties:
+                        resourceNames:
+                          description: resource_names is the list of resource names
+                            to which the rule applies.
+                          items:
+                            type: string
+                          type: array
+                        resources:
+                          description: resources is the resources to which the rule
+                            applies.
+                          items:
+                            description: RuleResource is the resource type for a rule.
+                            format: int32
+                            type: integer
+                          type: array
+                        verbs:
+                          description: verbs is the list of verbs that apply to the
+                            resource.
+                          items:
+                            description: RuleVerb is the verb type for a rule.
+                            format: int32
+                            type: integer
+                          type: array
+                      type: object
+                    type: array
+                type: object
+            required:
+            - role
             type: object
           status:
             description: RoleStatus defines the observed state of a Role.

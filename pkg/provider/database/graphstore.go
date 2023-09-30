@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/dominikbraun/graph"
+	"github.com/webmeshproj/webmesh/pkg/crypto"
+	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,10 +60,19 @@ func NewGraphStore(cli client.Client, namespace string) *GraphStore {
 // graph. If the vertex already exists, it is up to you whether ErrVertexAlreadyExists or no
 // error should be returned.
 func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props graph.VertexProperties) error {
+	// Check that the node is valid, this should be pushed up to the API server.
+	_, err := crypto.DecodePublicKey(node.GetPublicKey())
+	if err != nil {
+		return errors.ErrInvalidKey
+	}
 	// Check if the vertex already exists.
-	_, _, err := g.Vertex(nodeID)
+	_, _, err = g.Vertex(nodeID)
 	if err == nil {
 		return graph.ErrVertexAlreadyExists
+	}
+	hashedKey, err := HashEncodedKey(node.GetPublicKey())
+	if err != nil {
+		return err
 	}
 	var peer storagev1.Peer
 	peer.TypeMeta = metav1.TypeMeta{
@@ -72,7 +83,7 @@ func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props g
 		Namespace: g.namespace,
 		Name:      node.GetId(),
 		Labels: map[string]string{
-			PublicKeyLabel: node.GetPublicKey(),
+			PublicKeyLabel: hashedKey,
 		},
 	}
 	peer.Spec.Node = node
@@ -208,7 +219,7 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 	}
 	edg.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
-		Name:      edge.Source.String() + "_" + edge.Target.String(),
+		Name:      edge.Source.String() + "-" + edge.Target.String(),
 		Labels: map[string]string{
 			EdgeSourceLabel: edge.Source.String(),
 			EdgeTargetLabel: edge.Target.String(),
@@ -233,7 +244,7 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 	}
 	edg.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
-		Name:      edge.Source.String() + "_" + edge.Target.String(),
+		Name:      edge.Source.String() + "-" + edge.Target.String(),
 		Labels: map[string]string{
 			EdgeSourceLabel: edge.Source.String(),
 			EdgeTargetLabel: edge.Target.String(),
@@ -257,7 +268,7 @@ func (g *GraphStore) RemoveEdge(sourceNode, targetNode types.NodeID) error {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: g.namespace,
-			Name:      sourceNode.String() + "_" + targetNode.String(),
+			Name:      sourceNode.String() + "-" + targetNode.String(),
 		},
 	})
 	return client.IgnoreNotFound(err)

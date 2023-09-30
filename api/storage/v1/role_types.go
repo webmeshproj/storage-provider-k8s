@@ -23,7 +23,7 @@ import (
 
 // RoleSpec defines the desired state of a Role.
 type RoleSpec struct {
-	Role types.Role `json:",inline"`
+	Role types.Role `json:"role"`
 }
 
 // RoleStatus defines the observed state of a Role.
