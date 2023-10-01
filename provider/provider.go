@@ -220,19 +220,23 @@ func (p *Provider) Start(ctx context.Context) error {
 		}
 	}()
 	// Start the leader elector
-	go func() {
-		p.log.Info("Starting leader election")
-		for {
-			p.leaders.Run(ctx)
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				p.log.Info("Leader election lease lost, restarting election")
-			}
-		}
-	}()
+	go p.RunLeaderElection(ctx)
 	return nil
+}
+
+// RunLeaderElection runs the leader election loop.
+func (p *Provider) RunLeaderElection(ctx context.Context) error {
+	// Start the leader elector
+	p.log.Info("Starting leader election")
+	for {
+		p.leaders.Run(ctx)
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			p.log.Info("Leader election lease lost, restarting election")
+		}
+	}
 }
 
 // MeshStorage returns the underlying MeshStorage instance. The provider does not
