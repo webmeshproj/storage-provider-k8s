@@ -39,6 +39,7 @@ var _ storage.MeshDB = &Database{}
 
 // Database is a MeshDB implementation using Kubernetes custom resources.
 type Database struct {
+	mgr     manager.Manager
 	peers   *Peers
 	graph   types.PeerGraph
 	rbac    *RBAC
@@ -49,6 +50,7 @@ type Database struct {
 // New returns a new Database instance.
 func New(mgr manager.Manager, namespace string) (*Database, error) {
 	db := &Database{
+		mgr:     mgr,
 		peers:   NewPeers(mgr.GetClient(), namespace),
 		graph:   types.NewGraphWithStore(NewGraphStore(mgr.GetClient(), namespace)),
 		rbac:    NewRBAC(mgr.GetClient(), namespace),
@@ -63,7 +65,7 @@ func New(mgr manager.Manager, namespace string) (*Database, error) {
 		// Watch the Routes as well and queue reconciles for the related peer.
 		Watches(&storagev1.Route{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, o client.Object) []reconcile.Request {
 			labels := o.GetLabels()
-			if peerID, ok := labels[RouteNodeLabel]; ok {
+			if peerID, ok := labels[RouteNodeLabel]; ok && peerID != "" {
 				return []reconcile.Request{{NamespacedName: client.ObjectKey{Name: peerID, Namespace: namespace}}}
 			}
 			return nil
@@ -71,13 +73,13 @@ func New(mgr manager.Manager, namespace string) (*Database, error) {
 		// Watch edges as well and queue reconciles for the related peers.
 		Watches(&storagev1.MeshEdge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, o client.Object) []reconcile.Request {
 			labels := o.GetLabels()
-			sourceID, ok := labels[EdgeSourceLabel]
 			var out []reconcile.Request
-			if ok {
+			sourceID, ok := labels[EdgeSourceLabel]
+			if ok && sourceID != "" {
 				out = append(out, reconcile.Request{NamespacedName: client.ObjectKey{Name: sourceID, Namespace: namespace}})
 			}
 			targetID, ok := labels[EdgeTargetLabel]
-			if ok {
+			if ok && targetID != "" {
 				out = append(out, reconcile.Request{NamespacedName: client.ObjectKey{Name: targetID, Namespace: namespace}})
 			}
 			return out
@@ -99,7 +101,7 @@ func (db *Database) PeerGraph() types.PeerGraph {
 	return db.graph
 }
 
-// RBAC returns the interface for managing RBAC policies in the mesh.
+// RBAC returns the interface for conditionmanaging RBAC policies in the mesh.
 func (db *Database) RBAC() storage.RBAC {
 	return db.rbac
 }
@@ -112,4 +114,15 @@ func (db *Database) MeshState() storage.MeshState {
 // Networking returns the interface for managing networking in the mesh.
 func (db *Database) Networking() storage.Networking {
 	return db.network
+}
+
+// Close closes the database.
+func (db *Database) Close() error {
+	db.peers.submu.Lock()
+	defer db.peers.submu.Unlock()
+	for id, sub := range db.peers.subs {
+		sub.cancel()
+		delete(db.peers.subs, id)
+	}
+	return nil
 }

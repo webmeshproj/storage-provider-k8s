@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
@@ -31,7 +30,6 @@ func StripPatchMeta(object client.Object) {
 	object.SetResourceVersion("")
 	object.SetUID("")
 	object.SetGeneration(0)
-	object.SetCreationTimestamp(metav1.Time{})
 	object.SetManagedFields(nil)
 }
 

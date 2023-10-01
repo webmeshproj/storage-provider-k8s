@@ -96,7 +96,18 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 		mgropts.Client = client.Options{
 			Scheme: scheme,
 			Cache: &client.CacheOptions{
-				DisableFor: []client.Object{&corev1.Secret{}},
+				DisableFor: []client.Object{
+					&corev1.ConfigMap{},
+					&corev1.Secret{},
+					&storagev1.MeshState{},
+					&storagev1.Peer{},
+					&storagev1.MeshEdge{},
+					&storagev1.NetworkACL{},
+					&storagev1.Route{},
+					&storagev1.Role{},
+					&storagev1.RoleBinding{},
+					&storagev1.Group{},
+				},
 			},
 		}
 	}

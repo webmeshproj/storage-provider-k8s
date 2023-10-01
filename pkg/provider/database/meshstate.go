@@ -25,6 +25,7 @@ import (
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
@@ -35,7 +36,9 @@ import (
 var _ storage.MeshState = &MeshState{}
 
 //+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshstates,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshstates/status,verbs=get;update;patch
+
+// MeshStateConfigName is the name of the mesh state ConfigMap.
+const MeshStateConfigName = "webmesh-mesh-state"
 
 // MeshState implements the MeshState interface.
 type MeshState struct {
@@ -52,9 +55,6 @@ func NewMeshState(cli client.Client, namespace string) *MeshState {
 	}
 }
 
-// MeshStateConfigName is the name of the mesh state ConfigMap.
-const MeshStateConfigName = "webmesh-mesh-state"
-
 // GetIPv6Prefix returns the IPv6 prefix.
 func (st *MeshState) GetIPv6Prefix(ctx context.Context) (netip.Prefix, error) {
 	st.mu.Lock()
@@ -63,10 +63,10 @@ func (st *MeshState) GetIPv6Prefix(ctx context.Context) (netip.Prefix, error) {
 	if err != nil {
 		return netip.Prefix{}, err
 	}
-	if state.Spec.IPv6Prefix == "" {
+	if state.IPv6Prefix == "" {
 		return netip.Prefix{}, errors.ErrKeyNotFound
 	}
-	return netip.ParsePrefix(state.Spec.IPv6Prefix)
+	return netip.ParsePrefix(state.IPv6Prefix)
 }
 
 // SetIPv6Prefix sets the IPv6 prefix.
@@ -77,8 +77,9 @@ func (st *MeshState) SetIPv6Prefix(ctx context.Context, prefix netip.Prefix) err
 	if err != nil {
 		return err
 	}
-	state.Spec.IPv6Prefix = prefix.String()
-	return util.PatchObject(ctx, st.cli, state)
+	state.IPv6Prefix = prefix.String()
+	ctrl.Log.WithName("meshstate").V(1).Info("Set IPv6 prefix", "prefix", prefix.String())
+	return util.PatchObject(ctx, st.cli, state.DeepCopy())
 }
 
 // GetIPv4Prefix returns the IPv4 prefix.
@@ -89,10 +90,10 @@ func (st *MeshState) GetIPv4Prefix(ctx context.Context) (netip.Prefix, error) {
 	if err != nil {
 		return netip.Prefix{}, err
 	}
-	if state.Spec.IPv4Prefix == "" {
+	if state.IPv4Prefix == "" {
 		return netip.Prefix{}, errors.ErrKeyNotFound
 	}
-	return netip.ParsePrefix(state.Spec.IPv4Prefix)
+	return netip.ParsePrefix(state.IPv4Prefix)
 }
 
 // SetIPv4Prefix sets the IPv4 prefix.
@@ -103,8 +104,9 @@ func (st *MeshState) SetIPv4Prefix(ctx context.Context, prefix netip.Prefix) err
 	if err != nil {
 		return err
 	}
-	state.Spec.IPv4Prefix = prefix.String()
-	return util.PatchObject(ctx, st.cli, state)
+	state.IPv4Prefix = prefix.String()
+	ctrl.Log.WithName("meshstate").V(1).Info("Set IPv4 prefix", "prefix", prefix.String())
+	return util.PatchObject(ctx, st.cli, state.DeepCopy())
 }
 
 // GetMeshDomain returns the mesh domain.
@@ -115,10 +117,10 @@ func (st *MeshState) GetMeshDomain(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if state.Spec.MeshDomain == "" {
+	if state.MeshDomain == "" {
 		return "", errors.ErrKeyNotFound
 	}
-	return state.Spec.MeshDomain, nil
+	return state.MeshDomain, nil
 }
 
 // SetMeshDomain sets the mesh domain.
@@ -129,28 +131,40 @@ func (st *MeshState) SetMeshDomain(ctx context.Context, domain string) error {
 	if err != nil {
 		return err
 	}
-	state.Spec.MeshDomain = domain
-	return util.PatchObject(ctx, st.cli, state)
+	state.MeshDomain = domain
+	ctrl.Log.WithName("meshstate").V(1).Info("Set Mesh Domain", "domain", domain)
+	return util.PatchObject(ctx, st.cli, state.DeepCopy())
 }
 
 // fetchState fetches the current state.
 func (st *MeshState) fetchState(ctx context.Context) (*storagev1.MeshState, error) {
 	var state storagev1.MeshState
 	err := st.cli.Get(ctx, client.ObjectKey{
-		Namespace: "webmesh",
+		Namespace: st.namespace,
 		Name:      MeshStateConfigName,
 	}, &state)
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			// Return an empty state if the config doesn't exist.
+			ctrl.Log.WithName("meshstate").V(2).Info("State does not exist yet, returning empty state")
 			return &storagev1.MeshState{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "MeshState",
 					APIVersion: storagev1.GroupVersion.String(),
 				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: st.namespace,
+					Name:      MeshStateConfigName,
+				},
 			}, nil
 		}
 		return nil, fmt.Errorf("fetch mesh state: %w", err)
+	}
+	ctrl.Log.WithName("meshstate").V(2).Info("Current state", "state", state)
+	// Ensure type meta is present for a call to patch.
+	state.TypeMeta = metav1.TypeMeta{
+		Kind:       "MeshState",
+		APIVersion: storagev1.GroupVersion.String(),
 	}
 	return &state, nil
 }

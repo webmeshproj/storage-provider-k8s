@@ -20,19 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// MeshStateSpec defines the desired state of the MeshState.
-type MeshStateSpec struct {
-	// IPv6Prefix is the IPv6 prefix for the mesh.
-	IPv6Prefix string `json:"ipv6Prefix,omitempty"`
-	// IPv4Prefix is the IPv4 prefix for the mesh.
-	IPv4Prefix string `json:"ipv4Prefix,omitempty"`
-	// MeshDomain is the domain name for the mesh.
-	MeshDomain string `json:"meshDomain,omitempty"`
-}
-
-// MeshState defines the observed state of the MeshState.
-type MeshStateStatus struct{}
-
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
@@ -41,8 +28,12 @@ type MeshState struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MeshStateSpec   `json:"spec,omitempty"`
-	Status MeshStateStatus `json:"status,omitempty"`
+	// IPv6Prefix is the IPv6 prefix for the mesh.
+	IPv6Prefix string `json:"ipv6Prefix,omitempty"`
+	// IPv4Prefix is the IPv4 prefix for the mesh.
+	IPv4Prefix string `json:"ipv4Prefix,omitempty"`
+	// MeshDomain is the domain name for the mesh.
+	MeshDomain string `json:"meshDomain,omitempty"`
 }
 
 //+kubebuilder:object:root=true

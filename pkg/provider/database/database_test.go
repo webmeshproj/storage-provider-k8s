@@ -52,16 +52,16 @@ func newTestDB(t *testing.T) (storage.MeshDB, types.PeerGraphStore) {
 	}
 	testenv := envtest.Environment{
 		Scheme:                   scheme,
-		ErrorIfCRDPathMissing:    true,
 		CRDDirectoryPaths:        []string{"../../../deploy/crds"},
-		ControlPlaneStartTimeout: time.Second * 30,
-		ControlPlaneStopTimeout:  time.Second * 3,
+		ErrorIfCRDPathMissing:    true,
+		ControlPlaneStartTimeout: time.Second * 20,
+		ControlPlaneStopTimeout:  time.Second * 10,
 	}
 	cfg, err := testenv.Start()
 	if err != nil {
 		t.Fatal("Failed to start test environment", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() {
 		cancel()
 		t.Log("Stopping test environment")
@@ -72,11 +72,8 @@ func newTestDB(t *testing.T) (storage.MeshDB, types.PeerGraphStore) {
 	})
 	t.Log("Creating new controller manager")
 	mgr, err := manager.NewFromConfig(cfg, manager.Options{
-		ShutdownTimeout: time.Second * 3,
+		ShutdownTimeout: time.Second * 5,
 		DisableCache:    true,
-		WebhookPort:     0,
-		MetricsPort:     0,
-		ProbePort:       0,
 	})
 	if err != nil {
 		t.Fatal("Failed to create manager:", err)

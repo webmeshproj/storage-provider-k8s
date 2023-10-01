@@ -18,6 +18,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/dominikbraun/graph"
 	"github.com/webmeshproj/webmesh/pkg/crypto"
@@ -61,12 +62,20 @@ func NewGraphStore(cli client.Client, namespace string) *GraphStore {
 // error should be returned.
 func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props graph.VertexProperties) error {
 	// Check that the node is valid, this should be pushed up to the API server.
-	_, err := crypto.DecodePublicKey(node.GetPublicKey())
-	if err != nil {
-		return errors.ErrInvalidKey
+	if nodeID.IsEmpty() {
+		return errors.ErrEmptyNodeID
+	}
+	if !nodeID.IsValid() {
+		return fmt.Errorf("%w: %s", errors.ErrInvalidNodeID, nodeID)
+	}
+	if node.GetPublicKey() != "" {
+		_, err := crypto.DecodePublicKey(node.GetPublicKey())
+		if err != nil {
+			return errors.ErrInvalidKey
+		}
 	}
 	// Check if the vertex already exists.
-	_, _, err = g.Vertex(nodeID)
+	_, _, err := g.Vertex(nodeID)
 	if err == nil {
 		return graph.ErrVertexAlreadyExists
 	}
@@ -81,7 +90,7 @@ func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props g
 	}
 	peer.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
-		Name:      node.GetId(),
+		Name:      nodeID.String(),
 		Labels: map[string]string{
 			PublicKeyLabel: hashedKey,
 		},
@@ -93,6 +102,14 @@ func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props g
 // Vertex should return the vertex and vertex properties with the given hash value. If the
 // vertex doesn't exist, ErrVertexNotFound should be returned.
 func (g *GraphStore) Vertex(nodeID types.NodeID) (node types.MeshNode, props graph.VertexProperties, err error) {
+	if nodeID.IsEmpty() {
+		err = errors.ErrEmptyNodeID
+		return
+	}
+	if !nodeID.IsValid() {
+		err = fmt.Errorf("%w: %s", errors.ErrInvalidNodeID, nodeID)
+		return
+	}
 	var peer storagev1.Peer
 	err = g.cli.Get(context.Background(), client.ObjectKey{
 		Namespace: g.namespace,
@@ -111,6 +128,12 @@ func (g *GraphStore) Vertex(nodeID types.NodeID) (node types.MeshNode, props gra
 // exist, ErrVertexNotFound should be returned. If the vertex has edges to other vertices,
 // ErrVertexHasEdges should be returned.
 func (g *GraphStore) RemoveVertex(nodeID types.NodeID) error {
+	if nodeID.IsEmpty() {
+		return errors.ErrEmptyNodeID
+	}
+	if !nodeID.IsValid() {
+		return fmt.Errorf("%w: %s", errors.ErrInvalidNodeID, nodeID)
+	}
 	ctx := context.Background()
 	// First check if the vertex exists.
 	_, _, err := g.Vertex(nodeID)
@@ -128,7 +151,9 @@ func (g *GraphStore) RemoveVertex(nodeID types.NodeID) error {
 			return err
 		}
 	} else {
-		found = true
+		if len(edgelist.Items) > 0 {
+			found = true
+		}
 	}
 	err = g.cli.List(ctx, &edgelist, client.MatchingLabels{
 		EdgeTargetLabel: nodeID.String(),
@@ -138,7 +163,9 @@ func (g *GraphStore) RemoveVertex(nodeID types.NodeID) error {
 			return err
 		}
 	} else {
-		found = true
+		if len(edgelist.Items) > 0 {
+			found = true
+		}
 	}
 	if found {
 		return graph.ErrVertexHasEdges
@@ -170,6 +197,7 @@ func (g *GraphStore) ListVertices() ([]types.NodeID, error) {
 		if client.IgnoreNotFound(err) == nil {
 			return nil, nil
 		}
+		return nil, err
 	}
 	var vertices []types.NodeID
 	for _, peer := range peerlist.Items {
@@ -196,6 +224,12 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 	// We diverge from the suggested implementation and only check that one of the nodes
 	// exists. This is so joiners can add edges to nodes that are not yet in the graph.
 	// If this ends up causing problems, we can change it.
+	if sourceNode.IsEmpty() || targetNode.IsEmpty() {
+		return errors.ErrEmptyNodeID
+	}
+	if !sourceNode.IsValid() || !targetNode.IsValid() {
+		return fmt.Errorf("%w: %s and %s", errors.ErrInvalidNodeID, sourceNode, targetNode)
+	}
 	var eitherVertexExists bool
 	_, _, err := g.Vertex(sourceNode)
 	if err != nil && err != graph.ErrVertexNotFound {
@@ -212,6 +246,11 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 	if !eitherVertexExists {
 		return graph.ErrVertexNotFound
 	}
+	// Check if the edge already exists.
+	_, err = g.Edge(sourceNode, targetNode)
+	if err == nil {
+		return graph.ErrEdgeAlreadyExists
+	}
 	var edg storagev1.MeshEdge
 	edg.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
@@ -219,10 +258,10 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 	}
 	edg.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
-		Name:      edge.Source.String() + "-" + edge.Target.String(),
+		Name:      sourceNode.String() + "-" + targetNode.String(),
 		Labels: map[string]string{
-			EdgeSourceLabel: edge.Source.String(),
-			EdgeTargetLabel: edge.Target.String(),
+			EdgeSourceLabel: sourceNode.String(),
+			EdgeTargetLabel: targetNode.String(),
 		},
 	}
 	edg.Spec.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
@@ -233,6 +272,12 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 // Edge instance. If the edge doesn't exist, ErrEdgeNotFound should be returned.
 func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.Edge[types.NodeID]) error {
 	// Check that the edge exists
+	if sourceNode.IsEmpty() || targetNode.IsEmpty() {
+		return fmt.Errorf("node ID must not be empty")
+	}
+	if !sourceNode.IsValid() || !targetNode.IsValid() {
+		return fmt.Errorf("%w: %s and %s", errors.ErrInvalidNodeID, sourceNode, targetNode)
+	}
 	_, err := g.Edge(sourceNode, targetNode)
 	if err != nil {
 		return err
@@ -244,10 +289,10 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 	}
 	edg.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
-		Name:      edge.Source.String() + "-" + edge.Target.String(),
+		Name:      sourceNode.String() + "-" + targetNode.String(),
 		Labels: map[string]string{
-			EdgeSourceLabel: edge.Source.String(),
-			EdgeTargetLabel: edge.Target.String(),
+			EdgeSourceLabel: sourceNode.String(),
+			EdgeTargetLabel: targetNode.String(),
 		},
 	}
 	edg.Spec.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
@@ -261,6 +306,12 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 // be returned. If the edge doesn't exist, it is up to you whether ErrEdgeNotFound or no error
 // should be returned.
 func (g *GraphStore) RemoveEdge(sourceNode, targetNode types.NodeID) error {
+	if sourceNode.IsEmpty() || targetNode.IsEmpty() {
+		return fmt.Errorf("node ID must not be empty")
+	}
+	if !sourceNode.IsValid() || !targetNode.IsValid() {
+		return fmt.Errorf("%w: %s and %s", errors.ErrInvalidNodeID, sourceNode, targetNode)
+	}
 	err := g.cli.Delete(context.Background(), &storagev1.MeshEdge{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1.GroupVersion.String(),
@@ -283,6 +334,12 @@ func (g *GraphStore) RemoveEdge(sourceNode, targetNode types.NodeID) error {
 //
 // If the edge doesn't exist, ErrEdgeNotFound should be returned.
 func (g *GraphStore) Edge(sourceNode, targetNode types.NodeID) (graph.Edge[types.NodeID], error) {
+	if sourceNode.IsEmpty() || targetNode.IsEmpty() {
+		return graph.Edge[types.NodeID]{}, fmt.Errorf("node ID must not be empty")
+	}
+	if !sourceNode.IsValid() || !targetNode.IsValid() {
+		return graph.Edge[types.NodeID]{}, fmt.Errorf("%w: %s and %s", errors.ErrInvalidNodeID, sourceNode, targetNode)
+	}
 	var edgeList storagev1.MeshEdgeList
 	err := g.cli.List(context.Background(), &edgeList, client.MatchingLabels{
 		EdgeSourceLabel: sourceNode.String(),

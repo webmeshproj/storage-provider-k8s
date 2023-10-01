@@ -63,14 +63,6 @@ rules:
 - apiGroups:
   - storage.webmesh.io
   resources:
-  - meshstates/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - storage.webmesh.io
-  resources:
   - networkacls
   - routes
   verbs:

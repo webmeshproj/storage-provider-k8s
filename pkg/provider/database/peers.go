@@ -20,11 +20,16 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"sync"
+	"time"
 
+	"github.com/google/uuid"
+	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/crypto"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,6 +49,14 @@ type Peers struct {
 	cli       client.Client
 	graph     types.PeerGraph
 	namespace string
+	subs      map[string]*subscription
+	submu     sync.RWMutex
+}
+
+type subscription struct {
+	ctx    context.Context
+	fn     storage.PeerSubscribeFunc
+	cancel context.CancelFunc
 }
 
 // NewPeers returns a new Peers instance.
@@ -60,11 +73,11 @@ const PublicKeyLabel = "webmesh.io/public-key"
 
 // SumKey sums the key into a compatible label value.
 func SumKey(key crypto.PublicKey) (string, error) {
-	encoded, err := key.Raw()
+	encoded, err := key.Encode()
 	if err != nil {
 		return "", err
 	}
-	return HashEncodedKey(fmt.Sprintf("%x", encoded))
+	return HashEncodedKey(encoded)
 }
 
 // HashEncodedKey hashes the encoded key into a compatible label value.
@@ -80,10 +93,34 @@ func HashEncodedKey(encoded string) (string, error) {
 // Put creates or updates a node.
 func (p *Peers) Put(ctx context.Context, n types.MeshNode) error {
 	var peer storagev1.Peer
-	hashedKey, err := HashEncodedKey(n.GetPublicKey())
-	if err != nil {
-		return err
+	if !n.NodeID().IsValid() {
+		return fmt.Errorf("%w: %s", errors.ErrInvalidNodeID, n.NodeID())
 	}
+	var hashedKey string
+	var err error
+	if n.GetPublicKey() != "" {
+		// Make sure the public key is valid
+		_, err = crypto.DecodePublicKey(n.GetPublicKey())
+		if err != nil {
+			return fmt.Errorf("key is invalid: %s", err)
+		}
+		hashedKey, err = HashEncodedKey(n.GetPublicKey())
+		if err != nil {
+			return err
+		}
+		ctrl.Log.WithName("meshpeers").V(2).Info("Hashed public key for node", "key", hashedKey)
+	}
+	// Dedup the wireguard endpoints.
+	seen := make(map[string]struct{})
+	var wgendpoints []string
+	for _, endpoint := range n.GetWireguardEndpoints() {
+		if _, ok := seen[endpoint]; ok {
+			continue
+		}
+		seen[endpoint] = struct{}{}
+		wgendpoints = append(wgendpoints, endpoint)
+	}
+	n.WireguardEndpoints = wgendpoints
 	peer.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
 		Kind:       "Peer",
@@ -95,6 +132,7 @@ func (p *Peers) Put(ctx context.Context, n types.MeshNode) error {
 			PublicKeyLabel: hashedKey,
 		},
 	}
+	n.JoinedAt = timestamppb.New(time.Now().UTC())
 	peer.Spec.Node = n
 	return util.PatchObject(ctx, p.cli, &peer)
 }
@@ -121,6 +159,7 @@ func (p *Peers) GetByPubKey(ctx context.Context, key crypto.PublicKey) (types.Me
 	if err != nil {
 		return types.MeshNode{}, err
 	}
+	ctrl.Log.WithName("meshpeers").V(2).Info("Looking up node by hashed public key", "key", encoded)
 	var peerlist storagev1.PeerList
 	err = p.cli.List(ctx, &peerlist, client.MatchingLabels{
 		PublicKeyLabel: encoded,
@@ -205,7 +244,23 @@ func (p *Peers) ListIDs(ctx context.Context) ([]types.NodeID, error) {
 
 // Subscribe subscribes to node changes.
 func (p *Peers) Subscribe(ctx context.Context, fn storage.PeerSubscribeFunc) (context.CancelFunc, error) {
-	return func() {}, fmt.Errorf("TODO")
+	p.submu.Lock()
+	defer p.submu.Unlock()
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	sub := &subscription{
+		ctx:    ctx,
+		fn:     fn,
+		cancel: cancel,
+	}
+	if p.subs == nil {
+		p.subs = make(map[string]*subscription)
+	}
+	p.subs[id.String()] = sub
+	return sub.cancel, nil
 }
 
 // AddEdge adds an edge between two nodes.
@@ -262,5 +317,28 @@ func (p *Peers) RemoveEdge(ctx context.Context, from, to types.NodeID) error {
 }
 
 func (p *Peers) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	p.submu.Lock()
+	defer p.submu.Unlock()
+	var peer storagev1.Peer
+	err := p.cli.Get(ctx, req.NamespacedName, &peer)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, fmt.Errorf("get peer: %w", err)
+		}
+		// We'll notify an empty peer
+		peer.Spec.Node = types.MeshNode{
+			MeshNode: &v1.MeshNode{Id: req.Name},
+		}
+	}
+	for id, sub := range p.subs {
+		select {
+		case <-sub.ctx.Done():
+			// Delete the subscription
+			delete(p.subs, id)
+			continue
+		default:
+		}
+		sub.fn([]types.MeshNode{peer.Spec.Node})
+	}
 	return ctrl.Result{}, nil
 }
