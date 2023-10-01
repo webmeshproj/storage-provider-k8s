@@ -1,0 +1,110 @@
+{
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "CustomResourceDefinition",
+  "metadata": {
+    "annotations": {
+      "controller-gen.kubebuilder.io/version": "v0.13.0"
+    },
+    "name": "networkacls.storage.webmesh.io"
+  },
+  "spec": {
+    "group": "storage.webmesh.io",
+    "names": {
+      "kind": "NetworkACL",
+      "listKind": "NetworkACLList",
+      "plural": "networkacls",
+      "singular": "networkacl"
+    },
+    "scope": "Namespaced",
+    "versions": [
+      {
+        "name": "v1",
+        "schema": {
+          "openAPIV3Schema": {
+            "description": "NetworkACL is the Schema for the NetworkACLs API.",
+            "properties": {
+              "apiVersion": {
+                "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                "type": "string"
+              },
+              "kind": {
+                "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object"
+              },
+              "spec": {
+                "description": "NetworkACLSpec defines the desired state of a NetworkACL.",
+                "properties": {
+                  "networkACL": {
+                    "description": "NetworkACL is a Network ACL.",
+                    "properties": {
+                      "action": {
+                        "description": "action is the action to take when a request matches the ACL.",
+                        "format": "int32",
+                        "type": "integer"
+                      },
+                      "destinationCIDRs": {
+                        "description": "destination_cidrs is a list of destination CIDRs to match against. If empty, all CIDRs are matched. If one or more of the CIDRs is '*', all CIDRs are matched.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "destinationNodes": {
+                        "description": "destination_nodes is a list of destination nodes to match against. If empty, all nodes are matched. Groups can be specified with the prefix \"group:\". If one or more of the nodes is '*', all nodes are matched.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "name": {
+                        "description": "name is the name of the ACL.",
+                        "type": "string"
+                      },
+                      "priority": {
+                        "description": "priority is the priority of the ACL. ACLs with higher priority are evaluated first.",
+                        "format": "int32",
+                        "type": "integer"
+                      },
+                      "sourceCIDRs": {
+                        "description": "source_cidrs is a list of source CIDRs to match against. If empty, all CIDRs are matched. If one or more of the CIDRs is '*', all CIDRs are matched.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "sourceNodes": {
+                        "description": "source_nodes is a list of source nodes to match against. If empty, all nodes are matched. Groups can be specified with the prefix \"group:\". If one or more of the nodes is '*', all nodes are matched.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "networkACL"
+                ],
+                "type": "object"
+              },
+              "status": {
+                "description": "NetworkACLStatus defines the observed state of a NetworkACL.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "served": true,
+        "storage": true,
+        "subresources": {
+          "status": {}
+        }
+      }
+    ]
+  }
+}

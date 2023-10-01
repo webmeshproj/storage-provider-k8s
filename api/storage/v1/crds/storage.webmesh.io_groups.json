@@ -1,0 +1,91 @@
+{
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "CustomResourceDefinition",
+  "metadata": {
+    "annotations": {
+      "controller-gen.kubebuilder.io/version": "v0.13.0"
+    },
+    "name": "groups.storage.webmesh.io"
+  },
+  "spec": {
+    "group": "storage.webmesh.io",
+    "names": {
+      "kind": "Group",
+      "listKind": "GroupList",
+      "plural": "groups",
+      "singular": "group"
+    },
+    "scope": "Namespaced",
+    "versions": [
+      {
+        "name": "v1",
+        "schema": {
+          "openAPIV3Schema": {
+            "description": "Group is the Schema for the Groups API.",
+            "properties": {
+              "apiVersion": {
+                "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                "type": "string"
+              },
+              "kind": {
+                "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object"
+              },
+              "spec": {
+                "description": "GroupSpec defines the desired state of a Group.",
+                "properties": {
+                  "group": {
+                    "description": "Group wraps a group.",
+                    "properties": {
+                      "name": {
+                        "description": "name is the name of the group.",
+                        "type": "string"
+                      },
+                      "subjects": {
+                        "description": "subjects is the list of subjects in the group.",
+                        "items": {
+                          "description": "Subject is a subject to which a role can be bound.",
+                          "properties": {
+                            "name": {
+                              "description": "name is the name of the subject.",
+                              "type": "string"
+                            },
+                            "type": {
+                              "description": "type is the type of the subject.",
+                              "format": "int32",
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "group"
+                ],
+                "type": "object"
+              },
+              "status": {
+                "description": "GroupStatus defines the observed state of a Group.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "served": true,
+        "storage": true,
+        "subresources": {
+          "status": {}
+        }
+      }
+    ]
+  }
+}

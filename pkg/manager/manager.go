@@ -22,6 +22,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	"k8s.io/apimachinery/pkg/runtime"
 	corescheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -37,6 +38,8 @@ import (
 
 // Manager is the controller-runtime manager.
 type Manager = ctrl.Manager
+
+//+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch;create;update;patch;delete
 
 // Options are the options for configuring the manager.
 type Options struct {
@@ -69,6 +72,10 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = apiextensions.AddToScheme(scheme)
+	if err != nil {
+		return nil, err
+	}
 	probeAddr := "0"
 	if opts.ProbePort != 0 {
 		probeAddr = fmt.Sprintf("[::]:%d", opts.ProbePort)
@@ -96,18 +103,7 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 		mgropts.Client = client.Options{
 			Scheme: scheme,
 			Cache: &client.CacheOptions{
-				DisableFor: []client.Object{
-					&corev1.ConfigMap{},
-					&corev1.Secret{},
-					&storagev1.MeshState{},
-					&storagev1.Peer{},
-					&storagev1.MeshEdge{},
-					&storagev1.NetworkACL{},
-					&storagev1.Route{},
-					&storagev1.Role{},
-					&storagev1.RoleBinding{},
-					&storagev1.Group{},
-				},
+				DisableFor: append(storagev1.CustomObjects, &corev1.Secret{}),
 			},
 		}
 	}

@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:generate go run sigs.k8s.io/controller-tools/cmd/controller-gen@latest object:headerFile="../../../hack/boilerplate.go.txt" paths="./..."
-//go:generate go run sigs.k8s.io/controller-tools/cmd/controller-gen@latest crd:ignoreUnexportedFields=true paths="./..." output:crd:artifacts:config=../../../deploy/crds
+//go:generate bash crdgen.sh
 
 // Package v1 contains API Schema definitions for the mesh v1 API group
 // +kubebuilder:object:generate=true
