@@ -204,11 +204,11 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 
 // Start starts the provider.
 func (p *Provider) Start(ctx context.Context) error {
-	return p.StartUnmanaged(ctx)
+	return p.StartManaged(ctx)
 }
 
 // StartUnmanaged starts the provider assuming it controls the controller manager.
-func (p *Provider) StartUnmanaged(ctx context.Context) error {
+func (p *Provider) StartManaged(ctx context.Context) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.started.Load() {
@@ -229,9 +229,8 @@ func (p *Provider) StartUnmanaged(ctx context.Context) error {
 	return nil
 }
 
-// StartManaged is like start but it does not start the controller manager.
-// It assumes it was started elsewhere.
-func (p *Provider) StartManaged(ctx context.Context) error {
+// StartUnmanaged starts the provider assuming it does not control the controller manager.
+func (p *Provider) StartUnmanaged(ctx context.Context) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.started.Load() {
@@ -239,7 +238,6 @@ func (p *Provider) StartManaged(ctx context.Context) error {
 	}
 	defer p.started.Store(true)
 	ctx, p.stop = context.WithCancel(ctx)
-	// Start the leader elector
 	go p.RunLeaderElection(ctx)
 	return nil
 }
