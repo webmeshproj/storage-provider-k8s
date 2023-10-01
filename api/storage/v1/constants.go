@@ -19,4 +19,10 @@ package v1
 const (
 	// FieldOwner is the field used to identify the owner of mesh data.
 	FieldOwner = "storage.webmesh.io"
+	// PublicKeyLabel is the label used to store the hashed public key of a node.
+	PublicKeyLabel = "webmesh.io/public-key"
+	// EdgeSourceLabel is the label used to store the source node ID.
+	EdgeSourceLabel = "webmesh.io/edge-source"
+	// EdgeTargetLabel is the label used to store the target node ID.
+	EdgeTargetLabel = "webmesh.io/edge-target"
 )

@@ -37,12 +37,6 @@ var _ types.PeerGraphStore = &GraphStore{}
 //+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshedges,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshedges/status,verbs=get;update;patch
 
-// EdgeSourceLabel is the label used to store the source node ID.
-const EdgeSourceLabel = "webmesh.io/edge-source"
-
-// EdgeTargetLabel is the label used to store the target node ID.
-const EdgeTargetLabel = "webmesh.io/edge-target"
-
 // GraphStore implements the PeerGraphStore interface.
 type GraphStore struct {
 	cli       client.Client
@@ -92,7 +86,7 @@ func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props g
 		Namespace: g.namespace,
 		Name:      nodeID.String(),
 		Labels: map[string]string{
-			PublicKeyLabel: hashedKey,
+			storagev1.PublicKeyLabel: hashedKey,
 		},
 	}
 	peer.Spec.Node = node
@@ -144,7 +138,7 @@ func (g *GraphStore) RemoveVertex(nodeID types.NodeID) error {
 	var found bool
 	var edgelist storagev1.MeshEdgeList
 	err = g.cli.List(ctx, &edgelist, client.MatchingLabels{
-		EdgeSourceLabel: nodeID.String(),
+		storagev1.EdgeSourceLabel: nodeID.String(),
 	}, client.InNamespace(g.namespace))
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -156,7 +150,7 @@ func (g *GraphStore) RemoveVertex(nodeID types.NodeID) error {
 		}
 	}
 	err = g.cli.List(ctx, &edgelist, client.MatchingLabels{
-		EdgeTargetLabel: nodeID.String(),
+		storagev1.EdgeTargetLabel: nodeID.String(),
 	}, client.InNamespace(g.namespace))
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -260,8 +254,8 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 		Namespace: g.namespace,
 		Name:      sourceNode.String() + "-" + targetNode.String(),
 		Labels: map[string]string{
-			EdgeSourceLabel: sourceNode.String(),
-			EdgeTargetLabel: targetNode.String(),
+			storagev1.EdgeSourceLabel: sourceNode.String(),
+			storagev1.EdgeTargetLabel: targetNode.String(),
 		},
 	}
 	edg.Spec.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
@@ -291,8 +285,8 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 		Namespace: g.namespace,
 		Name:      sourceNode.String() + "-" + targetNode.String(),
 		Labels: map[string]string{
-			EdgeSourceLabel: sourceNode.String(),
-			EdgeTargetLabel: targetNode.String(),
+			storagev1.EdgeSourceLabel: sourceNode.String(),
+			storagev1.EdgeTargetLabel: targetNode.String(),
 		},
 	}
 	edg.Spec.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
@@ -342,8 +336,8 @@ func (g *GraphStore) Edge(sourceNode, targetNode types.NodeID) (graph.Edge[types
 	}
 	var edgeList storagev1.MeshEdgeList
 	err := g.cli.List(context.Background(), &edgeList, client.MatchingLabels{
-		EdgeSourceLabel: sourceNode.String(),
-		EdgeTargetLabel: targetNode.String(),
+		storagev1.EdgeSourceLabel: sourceNode.String(),
+		storagev1.EdgeTargetLabel: targetNode.String(),
 	}, client.InNamespace(g.namespace))
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {

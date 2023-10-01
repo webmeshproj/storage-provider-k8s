@@ -72,11 +72,11 @@ func New(mgr manager.Manager, namespace string) (*Database, error) {
 		Watches(&storagev1.MeshEdge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, o client.Object) []reconcile.Request {
 			labels := o.GetLabels()
 			var out []reconcile.Request
-			sourceID, ok := labels[EdgeSourceLabel]
+			sourceID, ok := labels[storagev1.EdgeSourceLabel]
 			if ok && sourceID != "" {
 				out = append(out, reconcile.Request{NamespacedName: client.ObjectKey{Name: sourceID, Namespace: namespace}})
 			}
-			targetID, ok := labels[EdgeTargetLabel]
+			targetID, ok := labels[storagev1.EdgeTargetLabel]
 			if ok && targetID != "" {
 				out = append(out, reconcile.Request{NamespacedName: client.ObjectKey{Name: targetID, Namespace: namespace}})
 			}

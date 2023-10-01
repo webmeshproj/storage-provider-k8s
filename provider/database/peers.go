@@ -68,9 +68,6 @@ func NewPeers(cli client.Client, namespace string) *Peers {
 	}
 }
 
-// PublicKeyLabel is the label used to store the public key.
-const PublicKeyLabel = "webmesh.io/public-key"
-
 // SumKey sums the key into a compatible label value.
 func SumKey(key crypto.PublicKey) (string, error) {
 	encoded, err := key.Encode()
@@ -129,7 +126,7 @@ func (p *Peers) Put(ctx context.Context, n types.MeshNode) error {
 		Namespace: p.namespace,
 		Name:      n.GetId(),
 		Labels: map[string]string{
-			PublicKeyLabel: hashedKey,
+			storagev1.PublicKeyLabel: hashedKey,
 		},
 	}
 	n.JoinedAt = timestamppb.New(time.Now().UTC())
@@ -162,7 +159,7 @@ func (p *Peers) GetByPubKey(ctx context.Context, key crypto.PublicKey) (types.Me
 	ctrl.Log.WithName("meshpeers").V(2).Info("Looking up node by hashed public key", "key", encoded)
 	var peerlist storagev1.PeerList
 	err = p.cli.List(ctx, &peerlist, client.MatchingLabels{
-		PublicKeyLabel: encoded,
+		storagev1.PublicKeyLabel: encoded,
 	}, client.InNamespace(p.namespace))
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
@@ -274,8 +271,8 @@ func (p *Peers) PutEdge(ctx context.Context, edge types.MeshEdge) error {
 		Namespace: p.namespace,
 		Name:      edge.SourceID().String() + "-" + edge.TargetID().String(),
 		Labels: map[string]string{
-			EdgeSourceLabel: edge.SourceID().String(),
-			EdgeTargetLabel: edge.TargetID().String(),
+			storagev1.EdgeSourceLabel: edge.SourceID().String(),
+			storagev1.EdgeTargetLabel: edge.TargetID().String(),
 		},
 	}
 	edg.Spec.MeshEdge = edge
@@ -286,8 +283,8 @@ func (p *Peers) PutEdge(ctx context.Context, edge types.MeshEdge) error {
 func (p *Peers) GetEdge(ctx context.Context, from, to types.NodeID) (types.MeshEdge, error) {
 	var edgeList storagev1.MeshEdgeList
 	err := p.cli.List(ctx, &edgeList, client.MatchingLabels{
-		EdgeSourceLabel: from.String(),
-		EdgeTargetLabel: to.String(),
+		storagev1.EdgeSourceLabel: from.String(),
+		storagev1.EdgeTargetLabel: to.String(),
 	}, client.InNamespace(p.namespace))
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
