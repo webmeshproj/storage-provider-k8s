@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/webmeshproj/storage-provider-k8s/pkg/manager"
+	"github.com/webmeshproj/storage-provider-k8s/provider/manager"
 )
 
 func TestProviderConformance(t *testing.T) {

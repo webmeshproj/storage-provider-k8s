@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
-	"github.com/webmeshproj/storage-provider-k8s/pkg/provider/util"
+	"github.com/webmeshproj/storage-provider-k8s/provider/util"
 )
 
 // Ensure we implement the interface.

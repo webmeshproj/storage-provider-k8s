@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/webmeshproj/storage-provider-k8s/pkg/provider/util"
+	"github.com/webmeshproj/storage-provider-k8s/provider/util"
 )
 
 // Ensure we satisfy the consensus interface.

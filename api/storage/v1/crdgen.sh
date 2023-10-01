@@ -1,7 +1,7 @@
 #!/usr/bin/env bash -ex
 
 go run sigs.k8s.io/controller-tools/cmd/controller-gen@latest \
-    object:headerFile="../../../hack/boilerplate.go.txt" \
+    object:headerFile="boilerplate.go.txt" \
     paths="./..."
 
 go run sigs.k8s.io/controller-tools/cmd/controller-gen@latest \

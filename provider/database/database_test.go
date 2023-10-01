@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
-	"github.com/webmeshproj/storage-provider-k8s/pkg/manager"
+	"github.com/webmeshproj/storage-provider-k8s/provider/manager"
 )
 
 func TestDatabaseConformance(t *testing.T) {

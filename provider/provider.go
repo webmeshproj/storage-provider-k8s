@@ -40,11 +40,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
-	"github.com/webmeshproj/storage-provider-k8s/pkg/manager"
-	"github.com/webmeshproj/storage-provider-k8s/pkg/provider/database"
+	"github.com/webmeshproj/storage-provider-k8s/provider/database"
+	"github.com/webmeshproj/storage-provider-k8s/provider/manager"
 )
 
-//go:generate go run sigs.k8s.io/controller-tools/cmd/controller-gen@latest rbac:roleName=webmesh-storage-role paths="./..." output:rbac:artifacts:config=../../deploy/manifests
+//go:generate go run sigs.k8s.io/controller-tools/cmd/controller-gen@latest rbac:roleName=webmesh-storage-role paths="./..." output:rbac:artifacts:config=../deploy/manifests
 
 const (
 	// LeaderElectionID is the name of the leader election lease.

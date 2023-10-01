@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
-	"github.com/webmeshproj/storage-provider-k8s/pkg/manager"
+	"github.com/webmeshproj/storage-provider-k8s/provider/manager"
 )
 
 // Ensure we implement the interface.
