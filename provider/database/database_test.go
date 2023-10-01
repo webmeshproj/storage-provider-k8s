@@ -52,7 +52,7 @@ func newTestDB(t *testing.T) (storage.MeshDB, types.PeerGraphStore) {
 	}
 	testenv := envtest.Environment{
 		Scheme:                   scheme,
-		CRDDirectoryPaths:        []string{"../../../deploy/crds"},
+		CRDDirectoryPaths:        []string{"../../deploy/crds"},
 		ErrorIfCRDPathMissing:    true,
 		ControlPlaneStartTimeout: time.Second * 20,
 		ControlPlaneStopTimeout:  time.Second * 10,
