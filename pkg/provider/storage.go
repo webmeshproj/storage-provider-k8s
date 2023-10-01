@@ -40,6 +40,8 @@ import (
 // Ensure we satisfy the storage interface.
 var _ storage.MeshStorage = &Storage{}
 
+//+kubebuilder:rbac:groups=,resources=secrets,verbs=get;list;watch;create;update;patch;delete
+
 const (
 	// MeshStorageLabel is the label used to identify all mesh storage secrets.
 	MeshStorageLabel = "webmesh.io/storage"

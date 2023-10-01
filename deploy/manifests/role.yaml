@@ -4,6 +4,16 @@ kind: ClusterRole
 metadata:
   name: webmesh-storage-role
 rules:
+- resources:
+  - secrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - storage.webmesh.io
   resources:

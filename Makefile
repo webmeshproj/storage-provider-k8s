@@ -21,7 +21,7 @@ LOCALBIN := $(CURDIR)/bin
 ##@ Testing
 
 K8S_VERSION  := 1.28
-LINT_TIMEOUT := 10m
+LINT_TIMEOUT := 300s
 
 lint: ## Run linters.
 	$(GO) run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run --timeout=$(LINT_TIMEOUT)
@@ -31,17 +31,17 @@ setup-envtest: ## Setup envtest. This is automatically run by the test target.
 	$(SETUP) 1> /dev/null
 
 RICHGO       ?= $(GO) run github.com/kyoh86/richgo@v0.3.12
-TEST_TIMEOUT ?= 180s
-test: setup-envtest ## Run tests.
+TEST_TIMEOUT ?= 300s
+TEST_ARGS    ?= -v -cover -covermode=atomic -coverprofile=cover.out -timeout=$(TEST_TIMEOUT)
+test: generate setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(SETUP))" \
-		$(RICHGO) test -v -cover -covermode=atomic -coverprofile=cover.out -timeout=$(TEST_TIMEOUT) ./...
+		$(RICHGO) test $(TEST_ARGS) ./...
 
 CI_TARGETS := lint test
 ifeq ($(CI),true)
 	CI_TARGETS := test
 endif
-ci-test: ## Run all CI tests.
-	$(MAKE) $(CI_TARGETS)
+ci-test: $(CI_TARGETS) ## Run all CI tests.
 
 ##@ Development
 
