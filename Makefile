@@ -48,10 +48,12 @@ ci-test: $(CI_TARGETS) ## Run all CI tests.
 generate: ## Run code generators.
 	$(GO) generate ./...
 
+RAW_REPO_URL ?= https://github.com/webmeshproj/storage-provider-k8s/raw/main
 BUNDLE := deploy/bundle.yaml
 bundle: generate ## Bundle a distribution manifest of CRDs and required Roles.
-	echo "# Source: $(BUNDLE)" > $(BUNDLE)
-	for i in `find deploy/ -type f` ; do \
+	@echo "+ Writing bundle to $(BUNDLE)"
+	@echo "# Source: $(RAW_REPO_URL)/$(BUNDLE)" > $(BUNDLE)
+	@for i in `find deploy/ -type f` ; do \
 		[[ "$$i" =~ $(BUNDLE) ]] && continue ; \
 		echo "---" >> $(BUNDLE) ; \
 		echo "# Source: $$i" >> $(BUNDLE) ; \
