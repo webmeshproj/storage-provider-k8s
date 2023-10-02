@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.2.4
 	github.com/google/uuid v1.3.1
 	github.com/webmeshproj/api v0.7.0
-	github.com/webmeshproj/webmesh v0.10.1-0.20231002105203-4ebc13065ade
+	github.com/webmeshproj/webmesh v0.10.1
 	google.golang.org/protobuf v1.31.0
 	k8s.io/api v0.28.2
 	k8s.io/apiextensions-apiserver v0.28.0
