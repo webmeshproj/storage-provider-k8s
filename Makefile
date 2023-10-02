@@ -45,5 +45,15 @@ ci-test: $(CI_TARGETS) ## Run all CI tests.
 
 ##@ Development
 
-generate:
+generate: ## Run code generators.
 	$(GO) generate ./...
+
+BUNDLE := deploy/bundle.yaml
+bundle: generate ## Bundle a distribution manifest of CRDs and required Roles.
+	echo "# Source: $(BUNDLE)" > $(BUNDLE)
+	for i in `find deploy/ -type f` ; do \
+		[[ "$$i" =~ $(BUNDLE) ]] && continue ; \
+		echo "---" >> $(BUNDLE) ; \
+		echo "# Source: $$i" >> $(BUNDLE) ; \
+		cat $$i | sed --posix -s -u 1,1d >> $(BUNDLE) ; \
+	done
