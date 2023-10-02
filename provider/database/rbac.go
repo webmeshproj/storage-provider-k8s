@@ -94,10 +94,17 @@ func (r *RBAC) GetEnabled(ctx context.Context) (bool, error) {
 		Name:      RBACEnabledConfigMap,
 	}, &cm)
 	if err != nil {
-		return false, client.IgnoreNotFound(err)
+		if client.IgnoreNotFound(err) == nil {
+			return true, nil
+		}
+		return false, err
 	}
+	// True is the default expected value.
 	if cm.Data == nil {
-		return false, nil
+		return true, nil
+	}
+	if cm.Data["enabled"] == "" {
+		return true, nil
 	}
 	return strconv.ParseBool(cm.Data["enabled"])
 }
