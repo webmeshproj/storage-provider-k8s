@@ -35,7 +35,6 @@ import (
 // Ensure we satisfy the consensus interface.
 var _ storage.Consensus = &Consensus{}
 
-//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
 
 const (

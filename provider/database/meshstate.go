@@ -37,7 +37,7 @@ var _ storage.MeshState = &MeshState{}
 
 //+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshstates,verbs=get;list;watch;create;update;patch;delete
 
-// MeshStateConfigName is the name of the mesh state ConfigMap.
+// MeshStateConfigName is the name of the mesh state object for a given cluster.
 const MeshStateConfigName = "webmesh-mesh-state"
 
 // MeshState implements the MeshState interface.

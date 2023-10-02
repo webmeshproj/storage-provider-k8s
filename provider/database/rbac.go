@@ -35,6 +35,7 @@ import (
 // Ensure we implement the interface.
 var _ storage.RBAC = &RBAC{}
 
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=storage.webmesh.io,resources=roles;rolebindings;groups,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=storage.webmesh.io,resources=roles/status;rolebindings/status;groups/status,verbs=get;update;patch
 
