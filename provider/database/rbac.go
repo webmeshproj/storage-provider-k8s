@@ -73,6 +73,10 @@ func (r *RBAC) SetEnabled(ctx context.Context, enabled bool) error {
 				Kind:       "ConfigMap",
 				APIVersion: corev1.SchemeGroupVersion.String(),
 			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.namespace,
+				Name:      RBACEnabledConfigMap,
+			},
 		}
 	}
 	if cm.Data == nil {
