@@ -36,6 +36,7 @@ import (
 var _ storage.Consensus = &Consensus{}
 
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
 
 const (
 	// StoragePeersSecret is the name of the secret used to store the peers.
