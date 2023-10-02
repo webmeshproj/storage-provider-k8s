@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.2.4
 	github.com/google/uuid v1.3.1
 	github.com/webmeshproj/api v0.7.0
-	github.com/webmeshproj/webmesh v0.10.0
+	github.com/webmeshproj/webmesh v0.10.1-0.20231002105203-4ebc13065ade
 	google.golang.org/protobuf v1.31.0
 	k8s.io/api v0.28.2
 	k8s.io/apiextensions-apiserver v0.28.0
@@ -30,6 +30,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
+	github.com/go-ping/ping v1.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -78,6 +79,7 @@ require (
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/term v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
