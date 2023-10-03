@@ -17,13 +17,12 @@ limitations under the License.
 package v1
 
 import (
-	"context"
 	"embed"
-	"fmt"
+	"encoding/json"
 	"sync"
 
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -43,12 +42,12 @@ var CustomObjects = []client.Object{
 }
 
 var (
-	customResourceDefinitions = []client.Object{}
+	customResourceDefinitions []*apiextensionsv1.CustomResourceDefinition
 	once                      sync.Once
 )
 
 // GetCustomResourceDefintions returns a list of all CRDs used for storage.
-func GetCustomResourceDefintions() []client.Object {
+func GetCustomResourceDefintions() []*apiextensionsv1.CustomResourceDefinition {
 	once.Do(func() {
 		// Read all CRDs into memory.
 		files, err := crdFS.ReadDir("crds")
@@ -56,13 +55,12 @@ func GetCustomResourceDefintions() []client.Object {
 			panic(err)
 		}
 		for _, file := range files {
-			var crd unstructured.Unstructured
-			crd.Object = make(map[string]interface{})
+			var crd apiextensionsv1.CustomResourceDefinition
 			data, err := crdFS.ReadFile("crds/" + file.Name())
 			if err != nil {
 				panic(err)
 			}
-			err = crd.UnmarshalJSON(data)
+			err = json.Unmarshal(data, &crd)
 			if err != nil {
 				panic(err)
 			}
@@ -76,15 +74,4 @@ func GetCustomResourceDefintions() []client.Object {
 		}
 	})
 	return customResourceDefinitions
-}
-
-// InstallCustomResourceDefinitions installs all CRDs used for storage.
-func InstallCustomResourceDefinitions(c client.Client) error {
-	for _, crd := range GetCustomResourceDefintions() {
-		err := c.Patch(context.Background(), crd, client.Apply, client.ForceOwnership, client.FieldOwner(FieldOwner))
-		if err != nil {
-			return fmt.Errorf("failed to install CRD %s: %w", crd.GetName(), err)
-		}
-	}
-	return nil
 }
