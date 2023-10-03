@@ -158,6 +158,7 @@ func (p *Peers) Get(ctx context.Context, id types.NodeID) (types.MeshNode, error
 					MeshNode: &v1.MeshNode{
 						Id:              p.nodeID.String(),
 						PrimaryEndpoint: p.laddr.IP.String(),
+						// TODO: Broadcast actual features from the CNI, such as membership.
 						Features: []*v1.FeaturePort{
 							{
 								Feature: v1.Feature_STORAGE_PROVIDER,

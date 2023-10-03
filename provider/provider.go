@@ -149,8 +149,9 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 	}
 	// Register the database with the manager
 	p.db, err = database.New(mgr, database.Options{
-		NodeID:    types.NodeID(options.NodeID),
-		Namespace: options.Namespace,
+		NodeID:     types.NodeID(options.NodeID),
+		Namespace:  options.Namespace,
+		ListenAddr: laddr,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create database: %w", err)
