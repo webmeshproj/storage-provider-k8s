@@ -51,6 +51,12 @@ func NewGraphStore(cli client.Client, namespace string) *GraphStore {
 	}
 }
 
+// TruncateNodeID truncates a node ID to 63 characters. This is necessary because
+// Kubernetes labels are limited to 63 characters.
+func TruncateNodeID(id types.NodeID) string {
+	return types.TruncateIDTo(id.String(), 63)
+}
+
 // AddVertex should add the given vertex with the given hash value and vertex properties to the
 // graph. If the vertex already exists, it is up to you whether ErrVertexAlreadyExists or no
 // error should be returned.
@@ -254,8 +260,8 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 		Namespace: g.namespace,
 		Name:      sourceNode.String() + "-" + targetNode.String(),
 		Labels: map[string]string{
-			storagev1.EdgeSourceLabel: sourceNode.String(),
-			storagev1.EdgeTargetLabel: targetNode.String(),
+			storagev1.EdgeSourceLabel: TruncateNodeID(sourceNode),
+			storagev1.EdgeTargetLabel: TruncateNodeID(targetNode),
 		},
 	}
 	edg.Spec.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
@@ -285,8 +291,8 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 		Namespace: g.namespace,
 		Name:      sourceNode.String() + "-" + targetNode.String(),
 		Labels: map[string]string{
-			storagev1.EdgeSourceLabel: sourceNode.String(),
-			storagev1.EdgeTargetLabel: targetNode.String(),
+			storagev1.EdgeSourceLabel: TruncateNodeID(sourceNode),
+			storagev1.EdgeTargetLabel: TruncateNodeID(targetNode),
 		},
 	}
 	edg.Spec.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
@@ -336,8 +342,8 @@ func (g *GraphStore) Edge(sourceNode, targetNode types.NodeID) (graph.Edge[types
 	}
 	var edgeList storagev1.MeshEdgeList
 	err := g.cli.List(context.Background(), &edgeList, client.MatchingLabels{
-		storagev1.EdgeSourceLabel: sourceNode.String(),
-		storagev1.EdgeTargetLabel: targetNode.String(),
+		storagev1.EdgeSourceLabel: TruncateNodeID(sourceNode),
+		storagev1.EdgeTargetLabel: TruncateNodeID(targetNode),
 	}, client.InNamespace(g.namespace))
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {

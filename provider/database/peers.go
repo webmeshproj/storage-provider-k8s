@@ -297,8 +297,8 @@ func (p *Peers) PutEdge(ctx context.Context, edge types.MeshEdge) error {
 		Namespace: p.namespace,
 		Name:      edge.SourceID().String() + "-" + edge.TargetID().String(),
 		Labels: map[string]string{
-			storagev1.EdgeSourceLabel: edge.SourceID().String(),
-			storagev1.EdgeTargetLabel: edge.TargetID().String(),
+			storagev1.EdgeSourceLabel: TruncateNodeID(edge.SourceID()),
+			storagev1.EdgeTargetLabel: TruncateNodeID(edge.TargetID()),
 		},
 	}
 	edg.Spec.MeshEdge = edge
@@ -309,8 +309,8 @@ func (p *Peers) PutEdge(ctx context.Context, edge types.MeshEdge) error {
 func (p *Peers) GetEdge(ctx context.Context, from, to types.NodeID) (types.MeshEdge, error) {
 	var edgeList storagev1.MeshEdgeList
 	err := p.cli.List(ctx, &edgeList, client.MatchingLabels{
-		storagev1.EdgeSourceLabel: from.String(),
-		storagev1.EdgeTargetLabel: to.String(),
+		storagev1.EdgeSourceLabel: TruncateNodeID(from),
+		storagev1.EdgeTargetLabel: TruncateNodeID(to),
 	}, client.InNamespace(p.namespace))
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
