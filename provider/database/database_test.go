@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/testutil"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
@@ -79,7 +80,10 @@ func newTestDB(t *testing.T) (storage.MeshDB, types.PeerGraphStore) {
 		t.Fatal("Failed to create manager:", err)
 	}
 	t.Log("Creating new database")
-	db, err := New(mgr, "default")
+	db, err := New(mgr, Options{
+		NodeID:    types.NodeID(uuid.New().String()),
+		Namespace: "default",
+	})
 	if err != nil {
 		t.Fatal("Failed to create database:", err)
 	}

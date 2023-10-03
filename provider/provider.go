@@ -30,6 +30,7 @@ import (
 	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
+	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coordinationv1client "k8s.io/client-go/kubernetes/typed/coordination/v1"
@@ -147,7 +148,10 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 		return nil, fmt.Errorf("register controller: %w", err)
 	}
 	// Register the database with the manager
-	p.db, err = database.New(mgr, options.Namespace)
+	p.db, err = database.New(mgr, database.Options{
+		NodeID:    types.NodeID(options.NodeID),
+		Namespace: options.Namespace,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create database: %w", err)
 	}

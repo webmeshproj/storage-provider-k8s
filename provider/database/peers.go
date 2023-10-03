@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -48,7 +49,10 @@ var _ storage.Peers = &Peers{}
 type Peers struct {
 	cli       client.Client
 	graph     types.PeerGraph
+	nodeID    types.NodeID
 	namespace string
+	laddr     *net.TCPAddr
+	startedAt time.Time
 	subs      map[string]*subscription
 	submu     sync.RWMutex
 }
@@ -60,11 +64,14 @@ type subscription struct {
 }
 
 // NewPeers returns a new Peers instance.
-func NewPeers(cli client.Client, namespace string) *Peers {
+func NewPeers(cli client.Client, opts Options) *Peers {
 	return &Peers{
 		cli:       cli,
-		graph:     types.NewGraphWithStore(NewGraphStore(cli, namespace)),
-		namespace: namespace,
+		nodeID:    opts.NodeID,
+		graph:     types.NewGraphWithStore(NewGraphStore(cli, opts.Namespace)),
+		namespace: opts.Namespace,
+		laddr:     opts.ListenAddr,
+		startedAt: time.Now().UTC(),
 	}
 }
 
@@ -143,6 +150,24 @@ func (p *Peers) Get(ctx context.Context, id types.NodeID) (types.MeshNode, error
 	}, &peer)
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
+			// In the kubernetes provider we track our own information separately in
+			// case we don't exist as an actual node in storage. This is the case
+			// when running as a CNI currently.
+			if id == p.nodeID {
+				return types.MeshNode{
+					MeshNode: &v1.MeshNode{
+						Id:              p.nodeID.String(),
+						PrimaryEndpoint: p.laddr.IP.String(),
+						Features: []*v1.FeaturePort{
+							{
+								Feature: v1.Feature_STORAGE_PROVIDER,
+								Port:    int32(p.laddr.Port),
+							},
+						},
+						JoinedAt: timestamppb.New(p.startedAt),
+					},
+				}, nil
+			}
 			return types.MeshNode{}, errors.ErrNodeNotFound
 		}
 		return types.MeshNode{}, err

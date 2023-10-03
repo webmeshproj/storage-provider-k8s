@@ -20,6 +20,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
@@ -38,6 +39,7 @@ var _ storage.MeshDB = &Database{}
 // Database is a MeshDB implementation using Kubernetes custom resources.
 type Database struct {
 	mgr     manager.Manager
+	laddr   *net.TCPAddr
 	peers   *Peers
 	graph   types.PeerGraph
 	rbac    *RBAC
@@ -45,15 +47,23 @@ type Database struct {
 	network *Networking
 }
 
+// Options are the options for the database.
+type Options struct {
+	NodeID     types.NodeID
+	Namespace  string
+	ListenAddr *net.TCPAddr
+}
+
 // New returns a new Database instance.
-func New(mgr manager.Manager, namespace string) (*Database, error) {
+func New(mgr manager.Manager, opts Options) (*Database, error) {
 	db := &Database{
 		mgr:     mgr,
-		peers:   NewPeers(mgr.GetClient(), namespace),
-		graph:   types.NewGraphWithStore(NewGraphStore(mgr.GetClient(), namespace)),
-		rbac:    NewRBAC(mgr.GetClient(), namespace),
-		state:   NewMeshState(mgr.GetClient(), namespace),
-		network: NewNetworking(mgr.GetClient(), namespace),
+		laddr:   opts.ListenAddr,
+		peers:   NewPeers(mgr.GetClient(), opts),
+		graph:   types.NewGraphWithStore(NewGraphStore(mgr.GetClient(), opts.Namespace)),
+		rbac:    NewRBAC(mgr.GetClient(), opts.Namespace),
+		state:   NewMeshState(mgr.GetClient(), opts.Namespace),
+		network: NewNetworking(mgr.GetClient(), opts.Namespace),
 	}
 	err := ctrl.
 		NewControllerManagedBy(mgr).
@@ -64,7 +74,7 @@ func New(mgr manager.Manager, namespace string) (*Database, error) {
 		Watches(&storagev1.Route{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, o client.Object) []reconcile.Request {
 			labels := o.GetLabels()
 			if peerID, ok := labels[RouteNodeLabel]; ok && peerID != "" {
-				return []reconcile.Request{{NamespacedName: client.ObjectKey{Name: peerID, Namespace: namespace}}}
+				return []reconcile.Request{{NamespacedName: client.ObjectKey{Name: peerID, Namespace: opts.Namespace}}}
 			}
 			return nil
 		})).
@@ -74,11 +84,11 @@ func New(mgr manager.Manager, namespace string) (*Database, error) {
 			var out []reconcile.Request
 			sourceID, ok := labels[storagev1.EdgeSourceLabel]
 			if ok && sourceID != "" {
-				out = append(out, reconcile.Request{NamespacedName: client.ObjectKey{Name: sourceID, Namespace: namespace}})
+				out = append(out, reconcile.Request{NamespacedName: client.ObjectKey{Name: sourceID, Namespace: opts.Namespace}})
 			}
 			targetID, ok := labels[storagev1.EdgeTargetLabel]
 			if ok && targetID != "" {
-				out = append(out, reconcile.Request{NamespacedName: client.ObjectKey{Name: targetID, Namespace: namespace}})
+				out = append(out, reconcile.Request{NamespacedName: client.ObjectKey{Name: targetID, Namespace: opts.Namespace}})
 			}
 			return out
 		})).
