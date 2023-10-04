@@ -84,7 +84,7 @@ type Provider struct {
 	laddr     net.Addr
 	lport     uint16
 	mgr       manager.Manager
-	db        *database.Database
+	db        storage.MeshDB
 	storage   *Storage
 	consensus *Consensus
 	leaders   *leaderelection.LeaderElector

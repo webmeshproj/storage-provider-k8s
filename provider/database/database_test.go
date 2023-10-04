@@ -36,10 +36,10 @@ import (
 )
 
 func TestDatabaseConformance(t *testing.T) {
-	testutil.TestMeshDBConformance(t, newTestDB)
+	testutil.TestMeshDataStoreConformance(t, newTestDB)
 }
 
-func newTestDB(t *testing.T) (storage.MeshDB, types.PeerGraphStore) {
+func newTestDB(t *testing.T) storage.MeshDataStore {
 	t.Log("Starting test environment")
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	scheme := runtime.NewScheme()
@@ -93,5 +93,5 @@ func newTestDB(t *testing.T) (storage.MeshDB, types.PeerGraphStore) {
 			t.Log("Failed to start manager:", err)
 		}
 	}()
-	return db, NewGraphStore(mgr.GetClient(), "default")
+	return db
 }

@@ -22,7 +22,9 @@ import (
 	"fmt"
 	"net"
 
+	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
+	"github.com/webmeshproj/webmesh/pkg/storage/meshdb"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,14 +36,13 @@ import (
 )
 
 // Ensure we implement the interface.
-var _ storage.MeshDB = &Database{}
+var _ storage.MeshDataStore = &Database{}
 
 // Database is a MeshDB implementation using Kubernetes custom resources.
 type Database struct {
 	mgr     manager.Manager
 	laddr   *net.TCPAddr
-	peers   *Peers
-	graph   types.PeerGraph
+	graph   *GraphStore
 	rbac    *RBAC
 	state   *MeshState
 	network *Networking
@@ -54,13 +55,22 @@ type Options struct {
 	ListenAddr *net.TCPAddr
 }
 
-// New returns a new Database instance.
-func New(mgr manager.Manager, opts Options) (*Database, error) {
+// New returns a new MeshDB instance. It will create a new Database
+// and then wrap it in a meshdb.MeshDB.
+func New(mgr manager.Manager, opts Options) (storage.MeshDB, error) {
+	db, err := NewDB(mgr, opts)
+	if err != nil {
+		return nil, err
+	}
+	return meshdb.New(db), nil
+}
+
+// NewDB returns a new MeshDataStore instance.
+func NewDB(mgr manager.Manager, opts Options) (*Database, error) {
 	db := &Database{
 		mgr:     mgr,
 		laddr:   opts.ListenAddr,
-		peers:   NewPeers(mgr.GetClient(), opts),
-		graph:   types.NewGraphWithStore(NewGraphStore(mgr.GetClient(), opts.Namespace)),
+		graph:   NewGraphStore(mgr.GetClient(), opts.Namespace),
 		rbac:    NewRBAC(mgr.GetClient(), opts.Namespace),
 		state:   NewMeshState(mgr.GetClient(), opts.Namespace),
 		network: NewNetworking(mgr.GetClient(), opts.Namespace),
@@ -92,20 +102,15 @@ func New(mgr manager.Manager, opts Options) (*Database, error) {
 			}
 			return out
 		})).
-		Complete(db.peers)
+		Complete(db)
 	if err != nil {
 		return nil, fmt.Errorf("register controller: %w", err)
 	}
 	return db, nil
 }
 
-// Peers returns the interface for managing nodes in the mesh.
-func (db *Database) Peers() storage.Peers {
-	return db.peers
-}
-
-// PeerGraph returns the interface for querying the peer graph.
-func (db *Database) PeerGraph() types.PeerGraph {
+// GraphStore returns the interface for querying the peer graph.
+func (db *Database) GraphStore() storage.GraphStore {
 	return db.graph
 }
 
@@ -126,11 +131,39 @@ func (db *Database) Networking() storage.Networking {
 
 // Close closes the database.
 func (db *Database) Close() error {
-	db.peers.submu.Lock()
-	defer db.peers.submu.Unlock()
-	for id, sub := range db.peers.subs {
+	db.graph.submu.Lock()
+	defer db.graph.submu.Unlock()
+	for id, sub := range db.graph.subs {
 		sub.cancel()
-		delete(db.peers.subs, id)
+		delete(db.graph.subs, id)
 	}
 	return nil
+}
+
+// Reconcile is called for every update to a peer, route, or edge.
+func (db *Database) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	db.graph.submu.RLock()
+	defer db.graph.submu.RUnlock()
+	var peer storagev1.Peer
+	err := db.graph.cli.Get(ctx, req.NamespacedName, &peer)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, fmt.Errorf("get peer: %w", err)
+		}
+		// We'll notify an empty peer
+		peer.Spec.Node = types.MeshNode{
+			MeshNode: &v1.MeshNode{Id: req.Name},
+		}
+	}
+	for id, sub := range db.graph.subs {
+		select {
+		case <-sub.ctx.Done():
+			// Delete the subscription
+			delete(db.graph.subs, id)
+			continue
+		default:
+		}
+		sub.fn([]types.MeshNode{peer.Spec.Node})
+	}
+	return ctrl.Result{}, nil
 }

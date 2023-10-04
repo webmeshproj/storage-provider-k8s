@@ -111,19 +111,6 @@ func (r *RBAC) GetEnabled(ctx context.Context) (bool, error) {
 
 // PutRole creates or updates a role.
 func (r *RBAC) PutRole(ctx context.Context, role types.Role) error {
-	if storage.IsSystemRole(role.GetName()) {
-		// Allow if the role doesn't exist yet.
-		_, err := r.GetRole(ctx, role.GetName())
-		if err != nil && !errors.IsRoleNotFound(err) {
-			return err
-		}
-		if err == nil {
-			return fmt.Errorf("%w %q", errors.ErrIsSystemRole, role.GetName())
-		}
-	}
-	if err := role.Validate(); err != nil {
-		return err
-	}
 	var strole storagev1.Role
 	strole.ObjectMeta = metav1.ObjectMeta{
 		Namespace: r.namespace,
@@ -155,9 +142,6 @@ func (r *RBAC) GetRole(ctx context.Context, name string) (types.Role, error) {
 
 // DeleteRole deletes a role by name.
 func (r *RBAC) DeleteRole(ctx context.Context, name string) error {
-	if storage.IsSystemRole(name) {
-		return fmt.Errorf("%w %q", errors.ErrIsSystemRole, name)
-	}
 	err := r.cli.Delete(ctx, &storagev1.Role{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Role",
@@ -192,19 +176,6 @@ func (r *RBAC) ListRoles(ctx context.Context) (types.RolesList, error) {
 
 // PutRoleBinding creates or updates a rolebinding.
 func (r *RBAC) PutRoleBinding(ctx context.Context, rolebinding types.RoleBinding) error {
-	if storage.IsSystemRoleBinding(rolebinding.GetName()) {
-		// Allow if the rolebinding doesn't exist yet.
-		_, err := r.GetRoleBinding(ctx, rolebinding.GetName())
-		if err != nil && !errors.IsRoleBindingNotFound(err) {
-			return err
-		}
-		if err == nil {
-			return fmt.Errorf("%w %q", errors.ErrIsSystemRoleBinding, rolebinding.GetName())
-		}
-	}
-	if err := rolebinding.Validate(); err != nil {
-		return err
-	}
 	var rb storagev1.RoleBinding
 	rb.TypeMeta = metav1.TypeMeta{
 		Kind:       "RoleBinding",
@@ -236,9 +207,6 @@ func (r *RBAC) GetRoleBinding(ctx context.Context, name string) (types.RoleBindi
 
 // DeleteRoleBinding deletes a rolebinding by name.
 func (r *RBAC) DeleteRoleBinding(ctx context.Context, name string) error {
-	if storage.IsSystemRoleBinding(name) {
-		return fmt.Errorf("%w %q", errors.ErrIsSystemRoleBinding, name)
-	}
 	err := r.cli.Delete(ctx, &storagev1.RoleBinding{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "RoleBinding",
@@ -273,9 +241,6 @@ func (r *RBAC) ListRoleBindings(ctx context.Context) ([]types.RoleBinding, error
 
 // PutGroup creates or updates a group.
 func (r *RBAC) PutGroup(ctx context.Context, group types.Group) error {
-	if err := group.Validate(); err != nil {
-		return err
-	}
 	var stgroup storagev1.Group
 	stgroup.ObjectMeta = metav1.ObjectMeta{
 		Namespace: r.namespace,
@@ -307,9 +272,6 @@ func (r *RBAC) GetGroup(ctx context.Context, name string) (types.Group, error) {
 
 // DeleteGroup deletes a group by name.
 func (r *RBAC) DeleteGroup(ctx context.Context, name string) error {
-	if storage.IsSystemGroup(name) {
-		return fmt.Errorf("%w %q", errors.ErrIsSystemGroup, name)
-	}
 	err := r.cli.Delete(ctx, &storagev1.Group{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Group",

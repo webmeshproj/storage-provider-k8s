@@ -18,7 +18,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"net/netip"
 
 	"github.com/webmeshproj/webmesh/pkg/storage"
@@ -56,10 +55,6 @@ func NewNetworking(cli client.Client, namespace string) *Networking {
 
 // PutNetworkACL creates or updates a NetworkACL.
 func (nw *Networking) PutNetworkACL(ctx context.Context, acl types.NetworkACL) error {
-	err := acl.Validate()
-	if err != nil {
-		return fmt.Errorf("%w: %w", errors.ErrInvalidACL, err)
-	}
 	var nacl storagev1.NetworkACL
 	nacl.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
@@ -123,10 +118,6 @@ func (nw *Networking) ListNetworkACLs(ctx context.Context) (types.NetworkACLs, e
 
 // PutRoute creates or updates a Route.
 func (nw *Networking) PutRoute(ctx context.Context, route types.Route) error {
-	err := route.Validate()
-	if err != nil {
-		return fmt.Errorf("%w: %w", errors.ErrInvalidRoute, err)
-	}
 	var r storagev1.Route
 	r.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
