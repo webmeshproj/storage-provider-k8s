@@ -45,11 +45,14 @@ var CustomObjects = []client.Object{
 var (
 	customResourceDefinitions []*apiextensionsv1.CustomResourceDefinition
 	once                      sync.Once
+	oncemu                    sync.Mutex
 )
 
 // GetCustomResourceDefintions returns a list of all CRDs used for storage.
 func GetCustomResourceDefintions() []*apiextensionsv1.CustomResourceDefinition {
 	once.Do(func() {
+		oncemu.Lock()
+		defer oncemu.Unlock()
 		// Read all CRDs into memory.
 		files, err := crdFS.ReadDir("crds")
 		if err != nil {

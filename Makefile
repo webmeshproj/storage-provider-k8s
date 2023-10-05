@@ -16,7 +16,6 @@ endif
 
 GOPATH   ?= $(shell $(GO) env GOPATH)
 GOBIN    ?= $(GOPATH)/bin
-LOCALBIN := $(CURDIR)/bin
 
 ##@ Testing
 
@@ -26,7 +25,7 @@ LINT_TIMEOUT := 300s
 lint: ## Run linters.
 	$(GO) run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run --timeout=$(LINT_TIMEOUT)
 
-SETUP := $(GO) run sigs.k8s.io/controller-runtime/tools/setup-envtest@latest use $(K8S_VERSION) --bin-dir $(LOCALBIN) -p path
+SETUP := $(GO) run sigs.k8s.io/controller-runtime/tools/setup-envtest@latest use $(K8S_VERSION) -p path
 setup-envtest: ## Setup envtest. This is automatically run by the test target.
 	$(SETUP) 1> /dev/null
 
