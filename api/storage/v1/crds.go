@@ -53,6 +53,9 @@ func GetCustomResourceDefintions() []*apiextensionsv1.CustomResourceDefinition {
 	once.Do(func() {
 		oncemu.Lock()
 		defer oncemu.Unlock()
+		if len(customResourceDefinitions) > 0 {
+			return
+		}
 		// Read all CRDs into memory.
 		files, err := crdFS.ReadDir("crds")
 		if err != nil {
