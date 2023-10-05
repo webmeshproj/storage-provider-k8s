@@ -53,7 +53,7 @@ func newTestDB(t *testing.T) storage.MeshDataStore {
 	}
 	testenv := envtest.Environment{
 		Scheme:                   scheme,
-		CRDs:                     storagev1.GetCustomResourceDefintions(),
+		CRDDirectoryPaths:        []string{"../../api/storage/v1/crds"},
 		ErrorIfCRDPathMissing:    true,
 		ControlPlaneStartTimeout: time.Second * 20,
 		ControlPlaneStopTimeout:  time.Second * 10,
