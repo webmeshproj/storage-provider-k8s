@@ -39,6 +39,7 @@ var CustomObjects = []client.Object{
 	&Role{},
 	&RoleBinding{},
 	&Group{},
+	&StoragePeer{},
 }
 
 var (

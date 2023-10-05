@@ -38,7 +38,7 @@ type MeshState struct {
 
 //+kubebuilder:object:root=true
 
-// MeshStateList contains a list of peers.
+// MeshStateList contains a list of meshstates.
 type MeshStateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

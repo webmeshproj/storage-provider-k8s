@@ -32,7 +32,6 @@ import (
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coordinationv1client "k8s.io/client-go/kubernetes/typed/coordination/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -286,33 +285,21 @@ func (p *Provider) Bootstrap(ctx context.Context) error {
 	if !p.started.Load() {
 		return errors.ErrClosed
 	}
-	// Check if the secret already exists.
-	_, err := p.consensus.getPeersSecret(ctx)
-	if err == nil {
-		// Secret exists, we are already bootstrapped
+	// Check if peers exist already
+	peers, err := p.consensus.getPeers(ctx)
+	if err != nil {
+		return err
+	}
+	if len(peers) > 0 {
+		// Peers exist, we are already bootstrapped
 		return errors.ErrAlreadyBootstrapped
 	}
-	// We create the peers secret on first boot.
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      StoragePeersSecret,
-			Namespace: p.Namespace,
-		},
-	}
-	self := Peer{&v1.StoragePeer{
+	// We create ourselves as a voter.
+	return p.consensus.AddVoter(ctx, &v1.StoragePeer{
 		Id:            p.NodeID,
 		Address:       fmt.Sprintf("%s:%d", p.NodeID, p.lport),
 		ClusterStatus: v1.ClusterStatus_CLUSTER_LEADER,
-	}}
-	p.log.Info("Bootstrapping storage provider", "self", self)
-	data, err := self.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("marshal self: %w", err)
-	}
-	secret.Data = map[string][]byte{
-		p.NodeID: data,
-	}
-	return p.consensus.patchPeers(ctx, secret)
+	})
 }
 
 // Status returns the status of the storage provider.

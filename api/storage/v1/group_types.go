@@ -43,7 +43,7 @@ type Group struct {
 
 //+kubebuilder:object:root=true
 
-// GroupList contains a list of peers.
+// GroupList contains a list of groups.
 type GroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

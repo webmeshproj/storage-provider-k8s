@@ -43,7 +43,7 @@ type MeshEdge struct {
 
 //+kubebuilder:object:root=true
 
-// MeshEdgeList contains a list of peers.
+// MeshEdgeList contains a list of edges.
 type MeshEdgeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

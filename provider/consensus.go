@@ -24,11 +24,10 @@ import (
 	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
-	"google.golang.org/protobuf/encoding/protojson"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
 	"github.com/webmeshproj/storage-provider-k8s/provider/util"
 )
 
@@ -36,6 +35,8 @@ import (
 var _ storage.Consensus = &Consensus{}
 
 //+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=storagepeers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=storagepeers/status,verbs=get;update;patch
 
 const (
 	// StoragePeersSecret is the name of the secret used to store the peers.
@@ -47,7 +48,7 @@ const (
 // Consensus is the consensus interface for the storage provider.
 type Consensus struct {
 	*Provider
-	self Peer
+	self *v1.StoragePeer
 	mu   sync.Mutex
 }
 
@@ -79,7 +80,7 @@ func (c *Consensus) GetPeers(ctx context.Context) ([]*v1.StoragePeer, error) {
 	c.trace(ctx, "Listed peers", "peers", peers)
 	var sps []*v1.StoragePeer
 	for _, p := range peers {
-		sps = append(sps, p.StoragePeer)
+		sps = append(sps, p.Spec.Peer)
 	}
 	return sps, nil
 }
@@ -91,8 +92,8 @@ func (c *Consensus) GetLeader(ctx context.Context) (*v1.StoragePeer, error) {
 	if c.IsLeader() {
 		// Fast path return ourself if we have it stored.
 		c.trace(ctx, "Returning self as leader")
-		if c.self.StoragePeer != nil {
-			return c.self.StoragePeer, nil
+		if c.self != nil {
+			return c.self, nil
 		}
 	}
 	c.trace(ctx, "Getting leader from peer list")
@@ -102,13 +103,14 @@ func (c *Consensus) GetLeader(ctx context.Context) (*v1.StoragePeer, error) {
 	}
 	c.trace(ctx, "Got peers list", "peers", peers)
 	for _, p := range peers {
-		if c.leaders.GetLeader() == p.GetId() {
+		peer := p.Spec.Peer
+		if c.leaders.GetLeader() == peer.GetId() {
 			if c.IsLeader() {
 				// Store ourself as the leader.
 				c.trace(ctx, "Storing and returning self as leader")
-				c.self = p
+				c.self = peer
 			}
-			return p.StoragePeer, nil
+			return peer, nil
 		}
 	}
 	c.trace(ctx, "No leader found")
@@ -122,25 +124,22 @@ func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 	if !c.IsLeader() {
 		return errors.ErrNotLeader
 	}
-	c.trace(ctx, "Adding voter", "peer", peer)
-	// There is only ever one writable peer.
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_VOTER
-	// Get the current peers.
-	secret, err := c.getPeersSecret(ctx)
-	if err != nil {
-		return err
+	c.trace(ctx, "Adding voter", "peer", peer)
+	stpeer := storagev1.StoragePeer{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StoragePeer",
+			APIVersion: storagev1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      peer.GetId(),
+			Namespace: c.Namespace,
+		},
+		Spec: storagev1.StoragePeerSpec{
+			Peer: peer,
+		},
 	}
-	c.trace(ctx, "Got peers secret", "secret-data", secret.Data)
-	// Add the peer to the secret.
-	data, err := Peer{peer}.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("marshal peer: %w", err)
-	}
-	if secret.Data == nil {
-		secret.Data = map[string][]byte{}
-	}
-	secret.Data[peer.GetId()] = data
-	return c.patchPeers(ctx, secret)
+	return util.PatchObject(ctx, c.mgr.GetClient(), &stpeer)
 }
 
 // AddObserver adds an observer to the consensus group.
@@ -150,24 +149,22 @@ func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error
 	if !c.IsLeader() {
 		return errors.ErrNotLeader
 	}
-	c.trace(ctx, "Adding observer", "peer", peer)
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
-	// Get the current peers.
-	secret, err := c.getPeersSecret(ctx)
-	if err != nil {
-		return err
+	c.trace(ctx, "Adding observer", "peer", peer)
+	stpeer := storagev1.StoragePeer{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StoragePeer",
+			APIVersion: storagev1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      peer.GetId(),
+			Namespace: c.Namespace,
+		},
+		Spec: storagev1.StoragePeerSpec{
+			Peer: peer,
+		},
 	}
-	c.trace(ctx, "Got peers secret", "secret-data", secret.Data)
-	// Add the peer to the secret.
-	data, err := Peer{peer}.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("marshal peer: %w", err)
-	}
-	if secret.Data == nil {
-		secret.Data = map[string][]byte{}
-	}
-	secret.Data[peer.GetId()] = data
-	return c.patchPeers(ctx, secret)
+	return util.PatchObject(ctx, c.mgr.GetClient(), &stpeer)
 }
 
 // DemoteVoter demotes a voter to an observer.
@@ -177,28 +174,20 @@ func (c *Consensus) DemoteVoter(ctx context.Context, peer *v1.StoragePeer) error
 	if !c.IsLeader() {
 		return errors.ErrNotLeader
 	}
-	c.trace(ctx, "Demoting voter", "peer", peer)
-	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
-	// Get the current peers.
-	secret, err := c.getPeersSecret(ctx)
+	var stpeer storagev1.StoragePeer
+	err := c.mgr.GetClient().Get(ctx, client.ObjectKey{
+		Name:      peer.GetId(),
+		Namespace: c.Namespace,
+	}, &stpeer)
 	if err != nil {
 		return err
 	}
-	c.trace(ctx, "Got peers secret", "secret-data", secret.Data)
-	// Add the peer to the secret.
-	data, err := Peer{peer}.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("marshal peer: %w", err)
-	}
-	if secret.Data == nil {
-		secret.Data = map[string][]byte{}
-	}
-	secret.Data[peer.GetId()] = data
-	return c.patchPeers(ctx, secret)
+	c.trace(ctx, "Demoting voter", "peer", peer)
+	stpeer.Spec.Peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
+	return util.PatchObject(ctx, c.mgr.GetClient(), &stpeer)
 }
 
-// RemovePeer removes a peer from the consensus group. If wait
-// is true, the function will wait for the peer to be removed.
+// RemovePeer removes a peer from the consensus group.
 func (c *Consensus) RemovePeer(ctx context.Context, peer *v1.StoragePeer, wait bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -206,53 +195,23 @@ func (c *Consensus) RemovePeer(ctx context.Context, peer *v1.StoragePeer, wait b
 		return errors.ErrNotLeader
 	}
 	c.trace(ctx, "Removing peer", "peer", peer)
-	// Get the current peers.
-	secret, err := c.getPeersSecret(ctx)
-	if err != nil {
-		return err
-	}
-	c.trace(ctx, "Got peers secret", "secret-data", secret.Data)
-	// Remove the peer from the secret.
-	delete(secret.Data, peer.GetId())
-	return c.patchPeers(ctx, secret)
+	err := c.mgr.GetClient().Delete(ctx, &storagev1.StoragePeer{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StoragePeer",
+			APIVersion: storagev1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      peer.GetId(),
+			Namespace: c.Namespace,
+		},
+	})
+	return client.IgnoreNotFound(err)
 }
 
-func (c *Consensus) getPeers(ctx context.Context) ([]Peer, error) {
-	secret, err := c.getPeersSecret(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var peers []Peer
-	for _, v := range secret.Data {
-		var p Peer
-		err := p.UnmarshalJSON(v)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshal peer: %w", err)
-		}
-		peers = append(peers, p)
-	}
-	return peers, nil
-}
-
-func (c *Consensus) getPeersSecret(ctx context.Context) (*corev1.Secret, error) {
-	var secret corev1.Secret
-	err := c.mgr.GetClient().Get(ctx, client.ObjectKey{
-		Name:      StoragePeersSecret,
-		Namespace: c.Namespace,
-	}, &secret)
-	if err != nil {
-		return nil, fmt.Errorf("get peers secret: %w", err)
-	}
-	return &secret, nil
-}
-
-func (c *Consensus) patchPeers(ctx context.Context, secret *corev1.Secret) error {
-	c.trace(ctx, "Patching peers secret", "secret-data", secret.Data)
-	secret.TypeMeta = metav1.TypeMeta{
-		Kind:       "Secret",
-		APIVersion: "v1",
-	}
-	return util.PatchObject(ctx, c.mgr.GetClient(), secret)
+func (c *Consensus) getPeers(ctx context.Context) ([]storagev1.StoragePeer, error) {
+	var peers storagev1.StoragePeerList
+	err := c.mgr.GetClient().List(ctx, &peers, client.InNamespace(c.Namespace))
+	return peers.Items, client.IgnoreNotFound(err)
 }
 
 func (c *Consensus) containsPeer(peers []*v1.StoragePeer, peer string) bool {
@@ -262,19 +221,4 @@ func (c *Consensus) containsPeer(peers []*v1.StoragePeer, peer string) bool {
 		}
 	}
 	return false
-}
-
-// Peer is a storage peer.
-type Peer struct {
-	*v1.StoragePeer
-}
-
-func (p Peer) MarshalJSON() ([]byte, error) {
-	return protojson.Marshal(p.StoragePeer)
-}
-
-func (p *Peer) UnmarshalJSON(data []byte) error {
-	var sp v1.StoragePeer
-	p.StoragePeer = &sp
-	return protojson.Unmarshal(data, p.StoragePeer)
 }

@@ -43,7 +43,7 @@ type Route struct {
 
 //+kubebuilder:object:root=true
 
-// RouteList contains a list of peers.
+// RouteList contains a list of routes.
 type RouteList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

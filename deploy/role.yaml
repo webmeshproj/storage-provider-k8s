@@ -130,3 +130,23 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - storagepeers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - storage.webmesh.io
+  resources:
+  - storagepeers/status
+  verbs:
+  - get
+  - patch
+  - update

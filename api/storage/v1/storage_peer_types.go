@@ -17,39 +17,39 @@ limitations under the License.
 package v1
 
 import (
-	"github.com/webmeshproj/webmesh/pkg/storage/types"
+	v1 "github.com/webmeshproj/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// NetworkACLSpec defines the desired state of a NetworkACL.
-type NetworkACLSpec struct {
-	NetworkACL types.NetworkACL `json:"networkACL"`
+// StoragePeer defines a peer in the storage consensus group.
+type StoragePeerSpec struct {
+	Peer *v1.StoragePeer `json:"peer"`
 }
 
-// NetworkACLStatus defines the observed state of a NetworkACL.
-type NetworkACLStatus struct{}
+// StoragePeerStatus defines the observed state of a Route.
+type StoragePeerStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// NetworkACL is the Schema for the NetworkACLs API.
-type NetworkACL struct {
+// StoragePeer is the Schema for the StoragePeer API.
+type StoragePeer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   NetworkACLSpec   `json:"spec,omitempty"`
-	Status NetworkACLStatus `json:"status,omitempty"`
+	Spec   StoragePeerSpec   `json:"spec,omitempty"`
+	Status StoragePeerStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// NetworkACLList contains a list of network acls.
-type NetworkACLList struct {
+// StoragePeerList contains a list of storage peers.
+type StoragePeerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []NetworkACL `json:"items"`
+	Items           []StoragePeer `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&NetworkACL{}, &NetworkACLList{})
+	SchemeBuilder.Register(&StoragePeer{}, &StoragePeerList{})
 }

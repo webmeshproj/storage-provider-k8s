@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
 	"github.com/webmeshproj/storage-provider-k8s/provider/manager"
 )
 
@@ -40,6 +41,7 @@ func setupTestProviders(t *testing.T, count int) []storage.Provider {
 	t.Log("Starting test environment")
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	testenv := envtest.Environment{
+		CRDs:                     storagev1.GetCustomResourceDefintions(),
 		ControlPlaneStartTimeout: time.Second * 30,
 		ControlPlaneStopTimeout:  time.Second * 3,
 	}
