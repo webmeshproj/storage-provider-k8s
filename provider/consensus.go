@@ -121,9 +121,6 @@ func (c *Consensus) GetLeader(ctx context.Context) (*v1.StoragePeer, error) {
 func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !c.IsLeader() {
-		return errors.ErrNotLeader
-	}
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_VOTER
 	c.trace(ctx, "Adding voter", "peer", peer)
 	stpeer := storagev1.StoragePeer{
@@ -146,9 +143,6 @@ func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !c.IsLeader() {
-		return errors.ErrNotLeader
-	}
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
 	c.trace(ctx, "Adding observer", "peer", peer)
 	stpeer := storagev1.StoragePeer{
@@ -171,9 +165,6 @@ func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error
 func (c *Consensus) DemoteVoter(ctx context.Context, peer *v1.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !c.IsLeader() {
-		return errors.ErrNotLeader
-	}
 	var stpeer storagev1.StoragePeer
 	err := c.mgr.GetClient().Get(ctx, client.ObjectKey{
 		Name:      peer.GetId(),
@@ -191,9 +182,6 @@ func (c *Consensus) DemoteVoter(ctx context.Context, peer *v1.StoragePeer) error
 func (c *Consensus) RemovePeer(ctx context.Context, peer *v1.StoragePeer, wait bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !c.IsLeader() {
-		return errors.ErrNotLeader
-	}
 	c.trace(ctx, "Removing peer", "peer", peer)
 	err := c.mgr.GetClient().Delete(ctx, &storagev1.StoragePeer{
 		TypeMeta: metav1.TypeMeta{
