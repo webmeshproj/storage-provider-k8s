@@ -775,6 +775,7 @@ rules:
   - storage.webmesh.io
   resources:
   - meshedges
+  - peers
   verbs:
   - create
   - delete
@@ -787,6 +788,7 @@ rules:
   - storage.webmesh.io
   resources:
   - meshedges/status
+  - peers/status
   verbs:
   - get
   - patch

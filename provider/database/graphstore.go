@@ -37,8 +37,8 @@ import (
 // Ensure we implement the interface.
 var _ types.PeerGraphStore = &GraphStore{}
 
-//+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshedges,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshedges/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshedges;peers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=storage.webmesh.io,resources=meshedges/status;peers/status,verbs=get;update;patch
 
 // GraphStore implements the PeerGraphStore interface.
 type GraphStore struct {
