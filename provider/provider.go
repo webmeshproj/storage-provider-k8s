@@ -58,11 +58,11 @@ var _ storage.Provider = &Provider{}
 type Options struct {
 	// NodeID is the ID of the node.
 	NodeID string
-	// ListenAddr is the address to bind the webhook server to.
+	// ListenPort is the port the storage API is listening on, if any.
 	ListenPort int
-	// MetricsAddr is the address to bind the metrics endpoint to.
+	// MetricsPort is the address to bind the metrics endpoint to.
 	MetricsPort int
-	// ProbeAddr is the address to bind the health probe endpoint to.
+	// ProbePort is the address to bind the health probe endpoint to.
 	ProbePort int
 	// ShutdownTimeout is the timeout for shutting down the provider.
 	ShutdownTimeout time.Duration
