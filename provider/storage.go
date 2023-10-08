@@ -29,7 +29,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
-	"github.com/webmeshproj/webmesh/pkg/storage/storageutil"
+	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -86,7 +86,7 @@ func (st *Storage) trace(ctx context.Context, msg string, args ...interface{}) {
 func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	if !storageutil.IsValidKey(string(key)) {
+	if !types.IsValidPathID(string(key)) {
 		return nil, errors.ErrInvalidKey
 	}
 	st.trace(ctx, "Getting value", "key", string(key))
@@ -137,7 +137,7 @@ func (st *Storage) GetValue(ctx context.Context, key []byte) ([]byte, error) {
 func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Duration) error {
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	if !storageutil.IsValidKey(string(key)) {
+	if !types.IsValidPathID(string(key)) {
 		return errors.ErrInvalidKey
 	}
 	if !st.leaders.IsLeader() {
@@ -191,7 +191,7 @@ func (st *Storage) PutValue(ctx context.Context, key, value []byte, ttl time.Dur
 func (st *Storage) Delete(ctx context.Context, key []byte) error {
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	if !storageutil.IsValidKey(string(key)) {
+	if !types.IsValidPathID(string(key)) {
 		return errors.ErrInvalidKey
 	}
 	if !st.leaders.IsLeader() {
@@ -218,9 +218,6 @@ func (st *Storage) Delete(ctx context.Context, key []byte) error {
 func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	if !storageutil.IsValidKey(string(prefix)) {
-		return nil, errors.ErrInvalidPrefix
-	}
 	st.trace(ctx, "Listing keys", "prefix", string(prefix))
 	buckets, err := st.bucketsForPrefix(ctx, prefix)
 	if err != nil {
@@ -255,9 +252,6 @@ func (st *Storage) ListKeys(ctx context.Context, prefix []byte) ([][]byte, error
 func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.PrefixIterator) error {
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	if !storageutil.IsValidKey(string(prefix)) {
-		return errors.ErrInvalidPrefix
-	}
 	st.trace(ctx, "Iterating prefix", "prefix", string(prefix))
 	buckets, err := st.bucketsForPrefix(ctx, prefix)
 	if err != nil {
@@ -292,9 +286,6 @@ func (st *Storage) IterPrefix(ctx context.Context, prefix []byte, fn storage.Pre
 func (st *Storage) Subscribe(ctx context.Context, prefix []byte, fn storage.KVSubscribeFunc) (context.CancelFunc, error) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	if !storageutil.IsValidKey(string(prefix)) {
-		return nil, errors.ErrInvalidPrefix
-	}
 	st.trace(ctx, "Subscribing to prefix", "prefix", string(prefix))
 	ctx, cancel := context.WithCancel(ctx)
 	st.subs[uuid.NewString()] = Subscription{

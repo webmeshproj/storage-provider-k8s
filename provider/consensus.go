@@ -68,6 +68,24 @@ func (c *Consensus) IsMember() bool {
 	return true
 }
 
+// GetPeer returns the peers of the storage group.
+func (c *Consensus) GetPeer(ctx context.Context, id string) (*v1.StoragePeer, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.trace(ctx, "Getting peer", "id", id)
+	peers, err := c.getPeers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get peers: %w", err)
+	}
+	c.trace(ctx, "Listed peers", "peers", peers)
+	for _, p := range peers {
+		if p.Spec.Peer.GetId() == id {
+			return p.Spec.Peer, nil
+		}
+	}
+	return nil, errors.ErrNodeNotFound
+}
+
 // GetPeers returns the peers of the storage group.
 func (c *Consensus) GetPeers(ctx context.Context) ([]*v1.StoragePeer, error) {
 	c.mu.Lock()

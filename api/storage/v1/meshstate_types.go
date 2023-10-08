@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	v1 "github.com/webmeshproj/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,12 +29,8 @@ type MeshState struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// IPv6Prefix is the IPv6 prefix for the mesh.
-	IPv6Prefix string `json:"ipv6Prefix,omitempty"`
-	// IPv4Prefix is the IPv4 prefix for the mesh.
-	IPv4Prefix string `json:"ipv4Prefix,omitempty"`
-	// MeshDomain is the domain name for the mesh.
-	MeshDomain string `json:"meshDomain,omitempty"`
+	// NetworkState is the network state.
+	NetworkState *v1.NetworkState `json:"networkState,omitempty"`
 }
 
 //+kubebuilder:object:root=true
