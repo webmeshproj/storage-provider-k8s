@@ -68,6 +68,12 @@ func (c *Consensus) IsMember() bool {
 	return true
 }
 
+// StepDown is a no-op for now, but hooks can potentially be given to the
+// overlay to perform some action when the node steps down.
+func (c *Consensus) StepDown(ctx context.Context) error {
+	return nil
+}
+
 // GetPeer returns the peers of the storage group.
 func (c *Consensus) GetPeer(ctx context.Context, id string) (*v1.StoragePeer, error) {
 	c.mu.Lock()

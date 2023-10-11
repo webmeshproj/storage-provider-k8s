@@ -6,8 +6,8 @@ require (
 	github.com/dominikbraun/graph v0.23.0
 	github.com/go-logr/logr v1.2.4
 	github.com/google/uuid v1.3.1
-	github.com/webmeshproj/api v0.8.0
-	github.com/webmeshproj/webmesh v0.12.1
+	github.com/webmeshproj/api v0.8.1
+	github.com/webmeshproj/webmesh v0.12.3
 	k8s.io/api v0.28.2
 	k8s.io/apiextensions-apiserver v0.28.0
 	k8s.io/apimachinery v0.28.2
@@ -27,7 +27,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/color v1.15.0 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.6.1-0.20230713180834-9342b6df5779 // indirect
 	github.com/go-logr/zapr v1.2.4 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
@@ -95,7 +95,7 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231009173412-8bfb1ae86b6c // indirect
 	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
