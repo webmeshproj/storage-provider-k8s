@@ -348,7 +348,17 @@ func (p *Provider) Status() *v1.StorageStatus {
 			}
 			return v1.ClusterStatus_CLUSTER_VOTER
 		}(),
-		Peers: peers,
+		Peers: func() []*v1.StoragePeer {
+			var out []*v1.StoragePeer
+			for _, peer := range peers {
+				pr := peer
+				if peer.Id == p.NodeID && p.consensus.IsLeader() {
+					pr.ClusterStatus = v1.ClusterStatus_CLUSTER_LEADER
+				}
+				out = append(out, pr)
+			}
+			return out
+		}(),
 		Message: func() string {
 			if err != nil {
 				return err.Error()
