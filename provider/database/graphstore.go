@@ -87,11 +87,35 @@ func HashEncodedKey(encoded string) (string, error) {
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
+// HashNodeID hashed a node ID into a compatible kubernetes object name.
+func HashNodeID(id types.NodeID) (string, error) {
+	h := sha1.New()
+	_, err := h.Write([]byte(id.String()))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
+// HashEdge hashes the edge into a compatible kubernetes object name.
+func HashEdge(source, target types.NodeID) (string, error) {
+	h := sha1.New()
+	_, err := h.Write([]byte(source.String() + "-" + target.String()))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
 // AddVertex should add the given vertex with the given hash value and vertex properties to the
 // graph. If the vertex already exists, it is up to you whether ErrVertexAlreadyExists or no
 // error should be returned.
 func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props graph.VertexProperties) error {
 	hashedKey, err := HashEncodedKey(node.GetPublicKey())
+	if err != nil {
+		return err
+	}
+	name, err := HashNodeID(nodeID)
 	if err != nil {
 		return err
 	}
@@ -102,9 +126,10 @@ func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props g
 	}
 	peer.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
-		Name:      nodeID.String(),
+		Name:      name,
 		Labels: map[string]string{
 			storagev1.PublicKeyLabel: hashedKey,
+			storagev1.NodeIDLabel:    TruncateNodeID(nodeID),
 		},
 	}
 	peer.Spec.Node = node
@@ -114,31 +139,37 @@ func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props g
 // Vertex should return the vertex and vertex properties with the given hash value. If the
 // vertex doesn't exist, ErrVertexNotFound should be returned.
 func (g *GraphStore) Vertex(nodeID types.NodeID) (node types.MeshNode, props graph.VertexProperties, err error) {
-	var peer storagev1.Peer
-	err = g.cli.Get(context.Background(), client.ObjectKey{
-		Namespace: g.namespace,
-		Name:      nodeID.String(),
-	}, &peer)
+	var peers storagev1.PeerList
+	err = g.cli.List(context.Background(), &peers, client.MatchingLabels{
+		storagev1.NodeIDLabel: TruncateNodeID(nodeID),
+	})
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			return types.MeshNode{}, graph.VertexProperties{}, graph.ErrVertexNotFound
 		}
 		return types.MeshNode{}, graph.VertexProperties{}, err
 	}
-	return peer.Spec.Node, graph.VertexProperties{}, nil
+	if len(peers.Items) == 0 {
+		return types.MeshNode{}, graph.VertexProperties{}, graph.ErrVertexNotFound
+	}
+	return peers.Items[0].Spec.Node, graph.VertexProperties{}, nil
 }
 
 // RemoveVertex should remove the vertex with the given hash value.
 func (g *GraphStore) RemoveVertex(nodeID types.NodeID) error {
 	ctx := context.Background()
-	err := g.cli.Delete(ctx, &storagev1.Peer{
+	name, err := HashNodeID(nodeID)
+	if err != nil {
+		return err
+	}
+	err = g.cli.Delete(ctx, &storagev1.Peer{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1.GroupVersion.String(),
 			Kind:       "Peer",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: g.namespace,
-			Name:      nodeID.String(),
+			Name:      name,
 		},
 	})
 	if err != nil {
@@ -182,6 +213,10 @@ func (g *GraphStore) VertexCount() (int, error) {
 // If either vertex doesn't exit, ErrVertexNotFound should be returned for the respective
 // vertex. If the edge already exists, ErrEdgeAlreadyExists should be returned.
 func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edge[types.NodeID]) error {
+	name, err := HashEdge(sourceNode, targetNode)
+	if err != nil {
+		return err
+	}
 	var edg storagev1.MeshEdge
 	edg.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
@@ -189,7 +224,7 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 	}
 	edg.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
-		Name:      sourceNode.String() + "-" + targetNode.String(),
+		Name:      name,
 		Labels: map[string]string{
 			storagev1.EdgeSourceLabel: TruncateNodeID(sourceNode),
 			storagev1.EdgeTargetLabel: TruncateNodeID(targetNode),
@@ -202,6 +237,10 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 // UpdateEdge should update the edge between the given vertices with the data of the given
 // Edge instance. If the edge doesn't exist, ErrEdgeNotFound should be returned.
 func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.Edge[types.NodeID]) error {
+	name, err := HashEdge(sourceNode, targetNode)
+	if err != nil {
+		return err
+	}
 	var edg storagev1.MeshEdge
 	edg.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
@@ -209,7 +248,7 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 	}
 	edg.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
-		Name:      sourceNode.String() + "-" + targetNode.String(),
+		Name:      name,
 		Labels: map[string]string{
 			storagev1.EdgeSourceLabel: TruncateNodeID(sourceNode),
 			storagev1.EdgeTargetLabel: TruncateNodeID(targetNode),
@@ -226,14 +265,18 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 // be returned. If the edge doesn't exist, it is up to you whether ErrEdgeNotFound or no error
 // should be returned.
 func (g *GraphStore) RemoveEdge(sourceNode, targetNode types.NodeID) error {
-	err := g.cli.Delete(context.Background(), &storagev1.MeshEdge{
+	name, err := HashEdge(sourceNode, targetNode)
+	if err != nil {
+		return err
+	}
+	err = g.cli.Delete(context.Background(), &storagev1.MeshEdge{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1.GroupVersion.String(),
 			Kind:       "MeshEdge",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: g.namespace,
-			Name:      sourceNode.String() + "-" + targetNode.String(),
+			Name:      name,
 		},
 	})
 	return client.IgnoreNotFound(err)

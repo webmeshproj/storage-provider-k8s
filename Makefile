@@ -32,7 +32,7 @@ setup-envtest: ## Setup envtest. This is automatically run by the test target.
 RICHGO        ?= $(GO) run github.com/kyoh86/richgo@v0.3.12
 TEST_TIMEOUT  ?= 300s
 TEST_PARALLEL ?= 1
-TEST_ARGS     ?= -v -cover -covermode=atomic -coverprofile=cover.out -timeout=$(TEST_TIMEOUT) -parallel=$(TEST_PARALLEL)
+TEST_ARGS     ?= -v -failfast -cover -covermode=atomic -coverprofile=cover.out -timeout=$(TEST_TIMEOUT) -parallel=$(TEST_PARALLEL)
 test: generate setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(SETUP))" \
 		$(RICHGO) test $(TEST_ARGS) ./...

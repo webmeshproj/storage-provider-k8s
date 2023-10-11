@@ -82,6 +82,10 @@ func (r *RBAC) SetEnabled(ctx context.Context, enabled bool) error {
 	if cm.Data == nil {
 		cm.Data = map[string]string{}
 	}
+	cm.TypeMeta = metav1.TypeMeta{
+		Kind:       "ConfigMap",
+		APIVersion: corev1.SchemeGroupVersion.String(),
+	}
 	cm.Data["enabled"] = fmt.Sprintf("%v", enabled)
 	return util.PatchObject(ctx, r.cli, &cm)
 }
