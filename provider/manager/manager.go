@@ -103,7 +103,7 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 		mgropts.Client = client.Options{
 			Scheme: scheme,
 			Cache: &client.CacheOptions{
-				DisableFor: append(storagev1.CustomObjects, &corev1.Secret{}),
+				DisableFor: append(storagev1.CustomObjects, &corev1.Secret{}, &corev1.ConfigMap{}),
 			},
 		}
 	}
