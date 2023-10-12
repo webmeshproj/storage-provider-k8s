@@ -18,6 +18,7 @@ package provider
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 	"sync"
 
@@ -44,6 +45,16 @@ const (
 	// ConsensusTraceVLevel is the trace level for the consensus package.
 	ConsensusTraceVLevel = 2
 )
+
+// HashNodeID hashed a node ID into a compatible kubernetes object name.
+func HashID(id string) (string, error) {
+	h := sha1.New()
+	_, err := h.Write([]byte(id))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
 
 // Consensus is the consensus interface for the storage provider.
 type Consensus struct {
@@ -145,6 +156,10 @@ func (c *Consensus) GetLeader(ctx context.Context) (*v1.StoragePeer, error) {
 func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	name, err := HashID(peer.GetId())
+	if err != nil {
+		return err
+	}
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_VOTER
 	c.trace(ctx, "Adding voter", "peer", peer)
 	stpeer := storagev1.StoragePeer{
@@ -153,7 +168,7 @@ func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 			APIVersion: storagev1.GroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      peer.GetId(),
+			Name:      name,
 			Namespace: c.Namespace,
 		},
 		Spec: storagev1.StoragePeerSpec{
@@ -167,6 +182,10 @@ func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
 func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	name, err := HashID(peer.GetId())
+	if err != nil {
+		return err
+	}
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
 	c.trace(ctx, "Adding observer", "peer", peer)
 	stpeer := storagev1.StoragePeer{
@@ -175,7 +194,7 @@ func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error
 			APIVersion: storagev1.GroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      peer.GetId(),
+			Name:      name,
 			Namespace: c.Namespace,
 		},
 		Spec: storagev1.StoragePeerSpec{
@@ -189,9 +208,13 @@ func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error
 func (c *Consensus) DemoteVoter(ctx context.Context, peer *v1.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	name, err := HashID(peer.GetId())
+	if err != nil {
+		return err
+	}
 	var stpeer storagev1.StoragePeer
-	err := c.mgr.GetClient().Get(ctx, client.ObjectKey{
-		Name:      peer.GetId(),
+	err = c.mgr.GetClient().Get(ctx, client.ObjectKey{
+		Name:      name,
 		Namespace: c.Namespace,
 	}, &stpeer)
 	if err != nil {
@@ -207,13 +230,17 @@ func (c *Consensus) RemovePeer(ctx context.Context, peer *v1.StoragePeer, wait b
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.trace(ctx, "Removing peer", "peer", peer)
-	err := c.mgr.GetClient().Delete(ctx, &storagev1.StoragePeer{
+	name, err := HashID(peer.GetId())
+	if err != nil {
+		return err
+	}
+	err = c.mgr.GetClient().Delete(ctx, &storagev1.StoragePeer{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "StoragePeer",
 			APIVersion: storagev1.GroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      peer.GetId(),
+			Name:      name,
 			Namespace: c.Namespace,
 		},
 	})
