@@ -74,51 +74,35 @@ func SumKey(key crypto.PublicKey) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return HashEncodedKey(encoded)
+	return HashEncodedKey(encoded), nil
 }
 
 // HashEncodedKey hashes the encoded key into a compatible label value.
-func HashEncodedKey(encoded string) (string, error) {
-	h := sha1.New()
-	_, err := h.Write([]byte(encoded))
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+func HashEncodedKey(encoded string) string {
+	return HashLabelValue(encoded)
 }
 
 // HashNodeID hashed a node ID into a compatible kubernetes object name.
-func HashNodeID(id types.NodeID) (string, error) {
-	h := sha1.New()
-	_, err := h.Write([]byte(id.String()))
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+func HashNodeID(id types.NodeID) string {
+	return HashLabelValue(id.String())
 }
 
 // HashEdge hashes the edge into a compatible kubernetes object name.
-func HashEdge(source, target types.NodeID) (string, error) {
+func HashEdge(source, target types.NodeID) string {
+	return HashLabelValue(source.String() + "-" + target.String())
+}
+
+// HashLabelValue is a generic function to hash a label value.
+func HashLabelValue(addr string) string {
 	h := sha1.New()
-	_, err := h.Write([]byte(source.String() + "-" + target.String()))
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	h.Write([]byte(addr))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // AddVertex should add the given vertex with the given hash value and vertex properties to the
 // graph. If the vertex already exists, it is up to you whether ErrVertexAlreadyExists or no
 // error should be returned.
 func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props graph.VertexProperties) error {
-	hashedKey, err := HashEncodedKey(node.GetPublicKey())
-	if err != nil {
-		return err
-	}
-	name, err := HashNodeID(nodeID)
-	if err != nil {
-		return err
-	}
 	var peer storagev1.Peer
 	peer.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
@@ -126,19 +110,19 @@ func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props g
 	}
 	peer.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
-		Name:      name,
+		Name:      HashNodeID(nodeID),
 		Labels: map[string]string{
-			storagev1.PublicKeyLabel: hashedKey,
+			storagev1.PublicKeyLabel: HashEncodedKey(node.GetPublicKey()),
 			storagev1.NodeIDLabel:    TruncateNodeID(nodeID),
 			storagev1.NodeIPv4Label: func() string {
 				if node.GetPrivateIPv4() != "" {
-					return node.GetPrivateIPv4()
+					return HashLabelValue(node.GetPrivateIPv4())
 				}
 				return ""
 			}(),
 			storagev1.NodeIPv6Label: func() string {
 				if node.GetPrivateIPv6() != "" {
-					return node.GetPrivateIPv6()
+					return HashLabelValue(node.GetPrivateIPv6())
 				}
 				return ""
 			}(),
@@ -170,18 +154,14 @@ func (g *GraphStore) Vertex(nodeID types.NodeID) (node types.MeshNode, props gra
 // RemoveVertex should remove the vertex with the given hash value.
 func (g *GraphStore) RemoveVertex(nodeID types.NodeID) error {
 	ctx := context.Background()
-	name, err := HashNodeID(nodeID)
-	if err != nil {
-		return err
-	}
-	err = g.cli.Delete(ctx, &storagev1.Peer{
+	err := g.cli.Delete(ctx, &storagev1.Peer{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1.GroupVersion.String(),
 			Kind:       "Peer",
 		},
 		ObjectMeta: metav1.ObjectMeta{
+			Name:      HashNodeID(nodeID),
 			Namespace: g.namespace,
-			Name:      name,
 		},
 	})
 	if err != nil {
@@ -225,18 +205,14 @@ func (g *GraphStore) VertexCount() (int, error) {
 // If either vertex doesn't exit, ErrVertexNotFound should be returned for the respective
 // vertex. If the edge already exists, ErrEdgeAlreadyExists should be returned.
 func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edge[types.NodeID]) error {
-	name, err := HashEdge(sourceNode, targetNode)
-	if err != nil {
-		return err
-	}
 	var edg storagev1.MeshEdge
 	edg.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
 		Kind:       "MeshEdge",
 	}
 	edg.ObjectMeta = metav1.ObjectMeta{
+		Name:      HashEdge(sourceNode, targetNode),
 		Namespace: g.namespace,
-		Name:      name,
 		Labels: map[string]string{
 			storagev1.EdgeSourceLabel: TruncateNodeID(sourceNode),
 			storagev1.EdgeTargetLabel: TruncateNodeID(targetNode),
@@ -249,18 +225,14 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 // UpdateEdge should update the edge between the given vertices with the data of the given
 // Edge instance. If the edge doesn't exist, ErrEdgeNotFound should be returned.
 func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.Edge[types.NodeID]) error {
-	name, err := HashEdge(sourceNode, targetNode)
-	if err != nil {
-		return err
-	}
 	var edg storagev1.MeshEdge
 	edg.TypeMeta = metav1.TypeMeta{
 		APIVersion: storagev1.GroupVersion.String(),
 		Kind:       "MeshEdge",
 	}
 	edg.ObjectMeta = metav1.ObjectMeta{
+		Name:      HashEdge(sourceNode, targetNode),
 		Namespace: g.namespace,
-		Name:      name,
 		Labels: map[string]string{
 			storagev1.EdgeSourceLabel: TruncateNodeID(sourceNode),
 			storagev1.EdgeTargetLabel: TruncateNodeID(targetNode),
@@ -277,18 +249,14 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 // be returned. If the edge doesn't exist, it is up to you whether ErrEdgeNotFound or no error
 // should be returned.
 func (g *GraphStore) RemoveEdge(sourceNode, targetNode types.NodeID) error {
-	name, err := HashEdge(sourceNode, targetNode)
-	if err != nil {
-		return err
-	}
-	err = g.cli.Delete(context.Background(), &storagev1.MeshEdge{
+	err := g.cli.Delete(context.Background(), &storagev1.MeshEdge{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: storagev1.GroupVersion.String(),
 			Kind:       "MeshEdge",
 		},
 		ObjectMeta: metav1.ObjectMeta{
+			Name:      HashEdge(sourceNode, targetNode),
 			Namespace: g.namespace,
-			Name:      name,
 		},
 	})
 	return client.IgnoreNotFound(err)

@@ -176,7 +176,7 @@ func (db *Database) GetPeerByIPv4Addr(ctx context.Context, addr netip.Prefix) (t
 	err := db.mgr.GetClient().List(context.Background(), &peers,
 		client.InNamespace(db.graph.namespace),
 		client.MatchingLabels{
-			storagev1.NodeIPv4Label: addr.String(),
+			storagev1.NodeIPv4Label: HashLabelValue(addr.String()),
 		},
 	)
 	if err != nil {
@@ -194,7 +194,7 @@ func (db *Database) GetPeerByIPv6Addr(ctx context.Context, addr netip.Prefix) (t
 	err := db.mgr.GetClient().List(context.Background(), &peers,
 		client.InNamespace(db.graph.namespace),
 		client.MatchingLabels{
-			storagev1.NodeIPv6Label: addr.String(),
+			storagev1.NodeIPv6Label: HashLabelValue(addr.String()),
 		},
 	)
 	if err != nil {
