@@ -84,6 +84,7 @@ type Provider struct {
 	lport     uint16
 	mgr       manager.Manager
 	db        storage.MeshDB
+	datastore *database.Database
 	storage   *Storage
 	consensus *Consensus
 	leaders   *leaderelection.LeaderElector
@@ -147,7 +148,7 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 		return nil, fmt.Errorf("register controller: %w", err)
 	}
 	// Register the database with the manager
-	p.db, err = database.New(mgr, database.Options{
+	p.db, p.datastore, err = database.New(mgr, database.Options{
 		NodeID:     types.NodeID(options.NodeID),
 		Namespace:  options.Namespace,
 		ListenAddr: laddr,
@@ -271,6 +272,12 @@ func (p *Provider) MeshStorage() storage.MeshStorage {
 // need to guarantee consistency on read operations.
 func (p *Provider) MeshDB() storage.MeshDB {
 	return p.db
+}
+
+// Datastore returns the underlying datastore instance. This is useful
+// for embedding the provider in other components.
+func (p *Provider) Datastore() *database.Database {
+	return p.datastore
 }
 
 // Consensus returns the underlying Consensus instance.

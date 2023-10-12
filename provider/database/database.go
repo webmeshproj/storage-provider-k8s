@@ -21,9 +21,11 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/netip"
 
 	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
+	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"github.com/webmeshproj/webmesh/pkg/storage/meshdb"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -57,12 +59,12 @@ type Options struct {
 
 // New returns a new MeshDB instance. It will create a new Database
 // and then wrap it in a meshdb.MeshDB.
-func New(mgr manager.Manager, opts Options) (storage.MeshDB, error) {
+func New(mgr manager.Manager, opts Options) (storage.MeshDB, *Database, error) {
 	db, err := NewDB(mgr, opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return meshdb.New(db), nil
+	return meshdb.New(db), db, nil
 }
 
 // NewDB returns a new MeshDataStore instance.
@@ -166,4 +168,40 @@ func (db *Database) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resul
 		sub.fn([]types.MeshNode{peer.Spec.Node})
 	}
 	return ctrl.Result{}, nil
+}
+
+// GetPeerByIP returns the peer with the given IP address.
+func (db *Database) GetPeerByIPv4Addr(ctx context.Context, addr netip.Prefix) (types.MeshNode, error) {
+	var peers storagev1.PeerList
+	err := db.mgr.GetClient().List(context.Background(), &peers,
+		client.InNamespace(db.graph.namespace),
+		client.MatchingLabels{
+			storagev1.NodeIPv4Label: addr.String(),
+		},
+	)
+	if err != nil {
+		return types.MeshNode{}, fmt.Errorf("list peers: %w", err)
+	}
+	if len(peers.Items) == 0 {
+		return types.MeshNode{}, errors.ErrNodeNotFound
+	}
+	return peers.Items[0].Spec.Node, nil
+}
+
+// GetPeerByIP returns the peer with the given IP address.
+func (db *Database) GetPeerByIPv6Addr(ctx context.Context, addr netip.Prefix) (types.MeshNode, error) {
+	var peers storagev1.PeerList
+	err := db.mgr.GetClient().List(context.Background(), &peers,
+		client.InNamespace(db.graph.namespace),
+		client.MatchingLabels{
+			storagev1.NodeIPv6Label: addr.String(),
+		},
+	)
+	if err != nil {
+		return types.MeshNode{}, fmt.Errorf("list peers: %w", err)
+	}
+	if len(peers.Items) == 0 {
+		return types.MeshNode{}, errors.ErrNodeNotFound
+	}
+	return peers.Items[0].Spec.Node, nil
 }

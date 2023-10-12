@@ -23,6 +23,10 @@ const (
 	NodeIDLabel = "webmesh.io/node-id"
 	// PublicKeyLabel is the label used to store the hashed public key of a node.
 	PublicKeyLabel = "webmesh.io/public-key"
+	// NodeIPv4Label is the label used to store the IPv4 address of a node.
+	NodeIPv4Label = "webmesh.io/node-ipv4"
+	// NodeIPv6Label is the label used to store the IPv6 address of a node.
+	NodeIPv6Label = "webmesh.io/node-ipv6"
 	// EdgeSourceLabel is the label used to store the source node ID.
 	EdgeSourceLabel = "webmesh.io/edge-source"
 	// EdgeTargetLabel is the label used to store the target node ID.

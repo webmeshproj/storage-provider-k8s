@@ -130,6 +130,18 @@ func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props g
 		Labels: map[string]string{
 			storagev1.PublicKeyLabel: hashedKey,
 			storagev1.NodeIDLabel:    TruncateNodeID(nodeID),
+			storagev1.NodeIPv4Label: func() string {
+				if node.GetPrivateIPv4() != "" {
+					return node.GetPrivateIPv4()
+				}
+				return ""
+			}(),
+			storagev1.NodeIPv6Label: func() string {
+				if node.GetPrivateIPv6() != "" {
+					return node.GetPrivateIPv6()
+				}
+				return ""
+			}(),
 		},
 	}
 	peer.Spec.Node = node

@@ -80,7 +80,7 @@ func newTestDB(t *testing.T) storage.MeshDataStore {
 		t.Fatal("Failed to create manager:", err)
 	}
 	t.Log("Creating new database")
-	db, err := New(mgr, Options{
+	db, _, err := New(mgr, Options{
 		NodeID:    types.NodeID(uuid.New().String()),
 		Namespace: "default",
 	})
