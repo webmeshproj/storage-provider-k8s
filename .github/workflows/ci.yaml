@@ -64,7 +64,6 @@ jobs:
             ~/go/pkg
             ~/go/bin
             ~/.cache/go-build
-            bin/
 
       - name: Run Conformance Tests
         shell: bash
