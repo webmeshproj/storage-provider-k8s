@@ -93,5 +93,9 @@ func newTestDB(t *testing.T) storage.MeshDataStore {
 			t.Log("Failed to start manager:", err)
 		}
 	}()
+	ok := mgr.GetCache().WaitForCacheSync(ctx)
+	if !ok {
+		t.Fatal("Failed to sync cache")
+	}
 	return db
 }
