@@ -16,7 +16,7 @@ env:
 jobs:
   lint:
     name: Static Analysis
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.TEST_PLATFORM == '' && 'ubuntu-latest' || vars.TEST_PLATFORM }}
     permissions:
       contents: "read"
     steps:
@@ -35,11 +35,12 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --timeout ${{ env.LINT_TIMEOUT }}
+          skip-cache: ${{ vars.TEST_PLATFORM != 'self-hosted' }}
 
   tests:
     name: Conformance Tests
     needs: [lint]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.TEST_PLATFORM == '' && 'ubuntu-latest' || vars.TEST_PLATFORM }}
     permissions:
       contents: "read"
     steps:
@@ -55,6 +56,7 @@ jobs:
 
       - name: Setup Test Cache
         uses: actions/cache@v3
+        if: ${{ vars.TEST_PLATFORM != 'self-hosted' }}
         with:
           key: ${{ runner.os }}-ci-tests-go-${{ env.GO_VERSION }}-${{ hashFiles(env.CACHE_DEP_PATH) }}
           restore-keys: ${{ runner.os }}-ci-tests-go-${{ env.GO_VERSION }}-

@@ -19,7 +19,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"net/netip"
 	"sync"
 
 	v1 "github.com/webmeshproj/api/v1"
@@ -57,85 +56,19 @@ func NewMeshState(cli client.Client, namespace string) *MeshState {
 	}
 }
 
-// GetIPv6Prefix returns the IPv6 prefix.
-func (st *MeshState) GetIPv6Prefix(ctx context.Context) (netip.Prefix, error) {
+// SetMeshState sets the mesh state.
+func (st *MeshState) SetMeshState(ctx context.Context, state types.NetworkState) error {
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	state, err := st.fetchState(ctx)
-	if err != nil {
-		return netip.Prefix{}, err
-	}
-	if state.NetworkState.NetworkV6 == "" {
-		return netip.Prefix{}, errors.ErrKeyNotFound
-	}
-	return netip.ParsePrefix(state.NetworkState.NetworkV6)
-}
-
-// SetIPv6Prefix sets the IPv6 prefix.
-func (st *MeshState) SetIPv6Prefix(ctx context.Context, prefix netip.Prefix) error {
-	st.mu.Lock()
-	defer st.mu.Unlock()
-	state, err := st.fetchState(ctx)
+	// Fetch the current state.
+	currentState, err := st.fetchState(ctx)
 	if err != nil {
 		return err
 	}
-	state.NetworkState.NetworkV6 = prefix.String()
-	ctrl.Log.WithName("meshstate").V(1).Info("Set IPv6 prefix", "prefix", prefix.String())
-	return util.PatchObject(ctx, st.cli, state.DeepCopy())
-}
-
-// GetIPv4Prefix returns the IPv4 prefix.
-func (st *MeshState) GetIPv4Prefix(ctx context.Context) (netip.Prefix, error) {
-	st.mu.Lock()
-	defer st.mu.Unlock()
-	state, err := st.fetchState(ctx)
-	if err != nil {
-		return netip.Prefix{}, err
-	}
-	if state.NetworkState.NetworkV4 == "" {
-		return netip.Prefix{}, errors.ErrKeyNotFound
-	}
-	return netip.ParsePrefix(state.NetworkState.NetworkV4)
-}
-
-// SetIPv4Prefix sets the IPv4 prefix.
-func (st *MeshState) SetIPv4Prefix(ctx context.Context, prefix netip.Prefix) error {
-	st.mu.Lock()
-	defer st.mu.Unlock()
-	state, err := st.fetchState(ctx)
-	if err != nil {
-		return err
-	}
-	state.NetworkState.NetworkV4 = prefix.String()
-	ctrl.Log.WithName("meshstate").V(1).Info("Set IPv4 prefix", "prefix", prefix.String())
-	return util.PatchObject(ctx, st.cli, state.DeepCopy())
-}
-
-// GetMeshDomain returns the mesh domain.
-func (st *MeshState) GetMeshDomain(ctx context.Context) (string, error) {
-	st.mu.Lock()
-	defer st.mu.Unlock()
-	state, err := st.fetchState(ctx)
-	if err != nil {
-		return "", err
-	}
-	if state.NetworkState.GetDomain() == "" {
-		return "", errors.ErrKeyNotFound
-	}
-	return state.NetworkState.GetDomain(), nil
-}
-
-// SetMeshDomain sets the mesh domain.
-func (st *MeshState) SetMeshDomain(ctx context.Context, domain string) error {
-	st.mu.Lock()
-	defer st.mu.Unlock()
-	state, err := st.fetchState(ctx)
-	if err != nil {
-		return err
-	}
-	state.NetworkState.Domain = domain
-	ctrl.Log.WithName("meshstate").V(1).Info("Set Mesh Domain", "domain", domain)
-	return util.PatchObject(ctx, st.cli, state.DeepCopy())
+	// Update the state.
+	currentState.NetworkState = state.NetworkState
+	// Patch the state.
+	return util.PatchObject(ctx, st.cli, currentState)
 }
 
 // GetMeshState returns the mesh state.
@@ -145,6 +78,14 @@ func (st *MeshState) GetMeshState(ctx context.Context) (types.NetworkState, erro
 	state, err := st.fetchState(ctx)
 	if err != nil {
 		return types.NetworkState{}, err
+	}
+	// If we don't have a mesh domain, return not found
+	if state.NetworkState.GetDomain() == "" {
+		return types.NetworkState{}, errors.NewKeyNotFoundError([]byte("mesh domain"))
+	}
+	// Make sure we at least have an IPv4 or IPv6 network.
+	if state.NetworkState.GetNetworkV4() == "" && state.NetworkState.GetNetworkV6() == "" {
+		return types.NetworkState{}, errors.NewKeyNotFoundError([]byte("mesh network"))
 	}
 	return types.NetworkState{NetworkState: state.NetworkState}, nil
 }
