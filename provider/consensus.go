@@ -126,8 +126,8 @@ func (c *Consensus) GetLeader(ctx context.Context) (types.StoragePeer, error) {
 	defer c.mu.Unlock()
 	if c.IsLeader() {
 		// Fast path return ourself if we have it stored.
-		c.trace(ctx, "Returning self as leader")
 		if c.self.StoragePeer != nil {
+			c.trace(ctx, "Returning self as leader")
 			return c.self, nil
 		}
 	}
@@ -146,6 +146,7 @@ func (c *Consensus) GetLeader(ctx context.Context) (types.StoragePeer, error) {
 			return peer, nil
 		} else if c.isObserver && peer.GetClusterStatus() == v1.ClusterStatus_CLUSTER_VOTER {
 			// We consider any voting node a leader when we are an observer.
+			c.trace(ctx, "Running as observer, returning voting node as leader", "peer", peer)
 			return peer, nil
 		}
 		if peer.ClusterStatus == v1.ClusterStatus_CLUSTER_LEADER {
