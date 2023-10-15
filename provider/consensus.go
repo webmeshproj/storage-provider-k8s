@@ -144,7 +144,8 @@ func (c *Consensus) GetLeader(ctx context.Context) (types.StoragePeer, error) {
 			c.trace(ctx, "Storing and returning self as leader")
 			c.self = peer
 			return peer, nil
-		} else if c.isObserver && peer.GetClusterStatus() == v1.ClusterStatus_CLUSTER_VOTER {
+		}
+		if c.isObserver && peer.GetClusterStatus() == v1.ClusterStatus_CLUSTER_VOTER {
 			// We consider any voting node a leader when we are an observer.
 			c.trace(ctx, "Running as observer, returning voting node as leader", "peer", peer)
 			return peer, nil
