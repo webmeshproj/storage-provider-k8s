@@ -226,21 +226,13 @@ func (c *Consensus) RemovePeer(ctx context.Context, peer types.StoragePeer, wait
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.isObserver {
-		return errors.ErrNotStorageNode
+		// Only allow if we are trying to remove ourself.
+		if peer.GetId() != c.NodeID {
+			return errors.ErrNotStorageNode
+		}
 	}
 	c.trace(ctx, "Removing peer", "peer", peer)
-	var peers storagev1.StoragePeerList
-	err := c.mgr.GetClient().List(ctx, &peers, client.InNamespace(c.Namespace), client.MatchingLabels{
-		storagev1.NodeIDLabel: peer.GetId(),
-	})
-	if err != nil {
-		return err
-	}
-	if len(peers.Items) == 0 {
-		return nil
-	}
-	err = c.mgr.GetClient().Delete(ctx, &peers.Items[0])
-	return client.IgnoreNotFound(err)
+	return c.RemovePeerByIDHash(ctx, HashID(peer.GetId()))
 }
 
 // RemovePeerByIDHash removes a peer from the consensus group using their ID hash.
