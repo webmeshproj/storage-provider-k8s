@@ -21,13 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// RoleBindingSpec defines the desired state of a RoleBinding.
-type RoleBindingSpec struct {
-	RoleBinding types.RoleBinding `json:"roleBinding"`
+// RoleBindingTypeMeta is the type meta for a RoleBinding.
+var RoleBindingTypeMeta = metav1.TypeMeta{
+	APIVersion: GroupVersion.String(),
+	Kind:       "RoleBinding",
 }
-
-// RoleBindingStatus defines the observed state of a RoleBinding.
-type RoleBindingStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -36,9 +34,7 @@ type RoleBindingStatus struct{}
 type RoleBinding struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   RoleBindingSpec   `json:"spec,omitempty"`
-	Status RoleBindingStatus `json:"status,omitempty"`
+	types.RoleBinding `json:",inline"`
 }
 
 //+kubebuilder:object:root=true

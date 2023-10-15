@@ -34,51 +34,32 @@
               "metadata": {
                 "type": "object"
               },
-              "spec": {
-                "description": "RoleBindingSpec defines the desired state of a RoleBinding.",
-                "properties": {
-                  "roleBinding": {
-                    "description": "RoleBinding wraps a rolebinding.",
-                    "properties": {
-                      "name": {
-                        "description": "name is the name of the role binding.",
-                        "type": "string"
-                      },
-                      "role": {
-                        "description": "role is the name of the role to which the binding applies.",
-                        "type": "string"
-                      },
-                      "subjects": {
-                        "description": "subjects is the list of subjects to which the binding applies.",
-                        "items": {
-                          "description": "Subject is a subject to which a role can be bound.",
-                          "properties": {
-                            "name": {
-                              "description": "name is the name of the subject.",
-                              "type": "string"
-                            },
-                            "type": {
-                              "description": "type is the type of the subject.",
-                              "format": "int32",
-                              "type": "integer"
-                            }
-                          },
-                          "type": "object"
-                        },
-                        "type": "array"
-                      }
-                    },
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "roleBinding"
-                ],
-                "type": "object"
+              "name": {
+                "description": "name is the name of the role binding.",
+                "type": "string"
               },
-              "status": {
-                "description": "RoleBindingStatus defines the observed state of a RoleBinding.",
-                "type": "object"
+              "role": {
+                "description": "role is the name of the role to which the binding applies.",
+                "type": "string"
+              },
+              "subjects": {
+                "description": "subjects is the list of subjects to which the binding applies.",
+                "items": {
+                  "description": "Subject is a subject to which a role can be bound.",
+                  "properties": {
+                    "name": {
+                      "description": "name is the name of the subject.",
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "type is the type of the subject.",
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
               }
             },
             "type": "object"

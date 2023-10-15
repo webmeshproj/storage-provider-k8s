@@ -104,10 +104,7 @@ func HashLabelValue(addr string) string {
 // error should be returned.
 func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props graph.VertexProperties) error {
 	var peer storagev1.Peer
-	peer.TypeMeta = metav1.TypeMeta{
-		APIVersion: storagev1.GroupVersion.String(),
-		Kind:       "Peer",
-	}
+	peer.TypeMeta = storagev1.PeerTypeMeta
 	peer.ObjectMeta = metav1.ObjectMeta{
 		Namespace: g.namespace,
 		Name:      HashNodeID(nodeID),
@@ -128,7 +125,7 @@ func (g *GraphStore) AddVertex(nodeID types.NodeID, node types.MeshNode, props g
 			}(),
 		},
 	}
-	peer.Spec.Node = node
+	peer.MeshNode = node
 	return util.PatchObject(context.Background(), g.cli, &peer)
 }
 
@@ -148,17 +145,14 @@ func (g *GraphStore) Vertex(nodeID types.NodeID) (node types.MeshNode, props gra
 	if len(peers.Items) == 0 {
 		return types.MeshNode{}, graph.VertexProperties{}, graph.ErrVertexNotFound
 	}
-	return peers.Items[0].Spec.Node, graph.VertexProperties{}, nil
+	return peers.Items[0].MeshNode, graph.VertexProperties{}, nil
 }
 
 // RemoveVertex should remove the vertex with the given hash value.
 func (g *GraphStore) RemoveVertex(nodeID types.NodeID) error {
 	ctx := context.Background()
 	err := g.cli.Delete(ctx, &storagev1.Peer{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: storagev1.GroupVersion.String(),
-			Kind:       "Peer",
-		},
+		TypeMeta: storagev1.PeerTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      HashNodeID(nodeID),
 			Namespace: g.namespace,
@@ -185,7 +179,7 @@ func (g *GraphStore) ListVertices() ([]types.NodeID, error) {
 	}
 	var vertices []types.NodeID
 	for _, peer := range peerlist.Items {
-		vertices = append(vertices, peer.Spec.Node.NodeID())
+		vertices = append(vertices, peer.NodeID())
 	}
 	return vertices, nil
 }
@@ -206,10 +200,7 @@ func (g *GraphStore) VertexCount() (int, error) {
 // vertex. If the edge already exists, ErrEdgeAlreadyExists should be returned.
 func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edge[types.NodeID]) error {
 	var edg storagev1.MeshEdge
-	edg.TypeMeta = metav1.TypeMeta{
-		APIVersion: storagev1.GroupVersion.String(),
-		Kind:       "MeshEdge",
-	}
+	edg.TypeMeta = storagev1.MeshEdgeTypeMeta
 	edg.ObjectMeta = metav1.ObjectMeta{
 		Name:      HashEdge(sourceNode, targetNode),
 		Namespace: g.namespace,
@@ -218,7 +209,7 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 			storagev1.EdgeTargetLabel: TruncateNodeID(targetNode),
 		},
 	}
-	edg.Spec.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
+	edg.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
 	return util.PatchObject(context.Background(), g.cli, &edg)
 }
 
@@ -226,10 +217,7 @@ func (g *GraphStore) AddEdge(sourceNode, targetNode types.NodeID, edge graph.Edg
 // Edge instance. If the edge doesn't exist, ErrEdgeNotFound should be returned.
 func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.Edge[types.NodeID]) error {
 	var edg storagev1.MeshEdge
-	edg.TypeMeta = metav1.TypeMeta{
-		APIVersion: storagev1.GroupVersion.String(),
-		Kind:       "MeshEdge",
-	}
+	edg.TypeMeta = storagev1.MeshEdgeTypeMeta
 	edg.ObjectMeta = metav1.ObjectMeta{
 		Name:      HashEdge(sourceNode, targetNode),
 		Namespace: g.namespace,
@@ -238,7 +226,7 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 			storagev1.EdgeTargetLabel: TruncateNodeID(targetNode),
 		},
 	}
-	edg.Spec.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
+	edg.MeshEdge = types.Edge(edge).ToMeshEdge(sourceNode, targetNode)
 	return util.PatchObject(context.Background(), g.cli, &edg)
 }
 
@@ -250,10 +238,7 @@ func (g *GraphStore) UpdateEdge(sourceNode, targetNode types.NodeID, edge graph.
 // should be returned.
 func (g *GraphStore) RemoveEdge(sourceNode, targetNode types.NodeID) error {
 	err := g.cli.Delete(context.Background(), &storagev1.MeshEdge{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: storagev1.GroupVersion.String(),
-			Kind:       "MeshEdge",
-		},
+		TypeMeta: storagev1.MeshEdgeTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      HashEdge(sourceNode, targetNode),
 			Namespace: g.namespace,
@@ -285,7 +270,7 @@ func (g *GraphStore) Edge(sourceNode, targetNode types.NodeID) (graph.Edge[types
 	if len(edgeList.Items) == 0 {
 		return graph.Edge[types.NodeID]{}, graph.ErrEdgeNotFound
 	}
-	return edgeList.Items[0].Spec.MeshEdge.AsGraphEdge(), nil
+	return edgeList.Items[0].MeshEdge.AsGraphEdge(), nil
 }
 
 // ListEdges should return all edges in the graph in a slice.
@@ -300,7 +285,7 @@ func (g *GraphStore) ListEdges() ([]graph.Edge[types.NodeID], error) {
 	}
 	var edges []graph.Edge[types.NodeID]
 	for _, edge := range edgeList.Items {
-		edges = append(edges, edge.Spec.MeshEdge.AsGraphEdge())
+		edges = append(edges, edge.MeshEdge.AsGraphEdge())
 	}
 	return edges, nil
 }

@@ -17,20 +17,24 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/webmeshproj/api/v1"
+	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// MeshStateTypeMeta is the type meta for a MeshState.
+var MeshStateTypeMeta = metav1.TypeMeta{
+	APIVersion: GroupVersion.String(),
+	Kind:       "MeshState",
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
 // MeshState is the Schema for the MeshState API.
 type MeshState struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// NetworkState is the network state.
-	NetworkState *v1.NetworkState `json:"networkState,omitempty"`
+	metav1.TypeMeta    `json:",inline"`
+	metav1.ObjectMeta  `json:"metadata,omitempty"`
+	types.NetworkState `json:",inline"`
 }
 
 //+kubebuilder:object:root=true

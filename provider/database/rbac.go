@@ -116,15 +116,12 @@ func (r *RBAC) GetEnabled(ctx context.Context) (bool, error) {
 // PutRole creates or updates a role.
 func (r *RBAC) PutRole(ctx context.Context, role types.Role) error {
 	var strole storagev1.Role
+	strole.TypeMeta = storagev1.RoleTypeMeta
 	strole.ObjectMeta = metav1.ObjectMeta{
 		Namespace: r.namespace,
 		Name:      role.Name,
 	}
-	strole.TypeMeta = metav1.TypeMeta{
-		Kind:       "Role",
-		APIVersion: storagev1.GroupVersion.String(),
-	}
-	strole.Spec.Role = role
+	strole.Role = role
 	return util.PatchObject(ctx, r.cli, &strole)
 }
 
@@ -141,16 +138,13 @@ func (r *RBAC) GetRole(ctx context.Context, name string) (types.Role, error) {
 		}
 		return types.Role{}, errors.ErrRoleNotFound
 	}
-	return strole.Spec.Role, nil
+	return strole.Role, nil
 }
 
 // DeleteRole deletes a role by name.
 func (r *RBAC) DeleteRole(ctx context.Context, name string) error {
 	err := r.cli.Delete(ctx, &storagev1.Role{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Role",
-			APIVersion: storagev1.GroupVersion.String(),
-		},
+		TypeMeta: storagev1.RoleTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: r.namespace,
 			Name:      name,
@@ -173,7 +167,7 @@ func (r *RBAC) ListRoles(ctx context.Context) (types.RolesList, error) {
 	}
 	out := make(types.RolesList, len(roles.Items))
 	for i, role := range roles.Items {
-		out[i] = role.Spec.Role
+		out[i] = role.Role
 	}
 	return out, nil
 }
@@ -181,15 +175,12 @@ func (r *RBAC) ListRoles(ctx context.Context) (types.RolesList, error) {
 // PutRoleBinding creates or updates a rolebinding.
 func (r *RBAC) PutRoleBinding(ctx context.Context, rolebinding types.RoleBinding) error {
 	var rb storagev1.RoleBinding
-	rb.TypeMeta = metav1.TypeMeta{
-		Kind:       "RoleBinding",
-		APIVersion: storagev1.GroupVersion.String(),
-	}
+	rb.TypeMeta = storagev1.RoleBindingTypeMeta
 	rb.ObjectMeta = metav1.ObjectMeta{
 		Namespace: r.namespace,
 		Name:      rolebinding.Name,
 	}
-	rb.Spec.RoleBinding = rolebinding
+	rb.RoleBinding = rolebinding
 	return util.PatchObject(ctx, r.cli, &rb)
 }
 
@@ -206,16 +197,13 @@ func (r *RBAC) GetRoleBinding(ctx context.Context, name string) (types.RoleBindi
 		}
 		return types.RoleBinding{}, errors.ErrRoleBindingNotFound
 	}
-	return rb.Spec.RoleBinding, nil
+	return rb.RoleBinding, nil
 }
 
 // DeleteRoleBinding deletes a rolebinding by name.
 func (r *RBAC) DeleteRoleBinding(ctx context.Context, name string) error {
 	err := r.cli.Delete(ctx, &storagev1.RoleBinding{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "RoleBinding",
-			APIVersion: storagev1.GroupVersion.String(),
-		},
+		TypeMeta: storagev1.RoleBindingTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: r.namespace,
 			Name:      name,
@@ -238,7 +226,7 @@ func (r *RBAC) ListRoleBindings(ctx context.Context) ([]types.RoleBinding, error
 	}
 	out := make([]types.RoleBinding, len(rbList.Items))
 	for i, rb := range rbList.Items {
-		out[i] = rb.Spec.RoleBinding
+		out[i] = rb.RoleBinding
 	}
 	return out, nil
 }
@@ -246,15 +234,12 @@ func (r *RBAC) ListRoleBindings(ctx context.Context) ([]types.RoleBinding, error
 // PutGroup creates or updates a group.
 func (r *RBAC) PutGroup(ctx context.Context, group types.Group) error {
 	var stgroup storagev1.Group
+	stgroup.TypeMeta = storagev1.GroupTypeMeta
 	stgroup.ObjectMeta = metav1.ObjectMeta{
 		Namespace: r.namespace,
 		Name:      group.Name,
 	}
-	stgroup.TypeMeta = metav1.TypeMeta{
-		Kind:       "Group",
-		APIVersion: storagev1.GroupVersion.String(),
-	}
-	stgroup.Spec.Group = group
+	stgroup.Group = group
 	return util.PatchObject(ctx, r.cli, &stgroup)
 }
 
@@ -271,16 +256,13 @@ func (r *RBAC) GetGroup(ctx context.Context, name string) (types.Group, error) {
 		}
 		return types.Group{}, errors.ErrGroupNotFound
 	}
-	return stgroup.Spec.Group, nil
+	return stgroup.Group, nil
 }
 
 // DeleteGroup deletes a group by name.
 func (r *RBAC) DeleteGroup(ctx context.Context, name string) error {
 	err := r.cli.Delete(ctx, &storagev1.Group{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Group",
-			APIVersion: storagev1.GroupVersion.String(),
-		},
+		TypeMeta: storagev1.GroupTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: r.namespace,
 			Name:      name,
@@ -303,7 +285,7 @@ func (r *RBAC) ListGroups(ctx context.Context) ([]types.Group, error) {
 	}
 	out := make([]types.Group, len(groups.Items))
 	for i, group := range groups.Items {
-		out[i] = group.Spec.Group
+		out[i] = group.Group
 	}
 	return out, nil
 }

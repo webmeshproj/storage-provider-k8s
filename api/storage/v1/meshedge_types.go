@@ -21,13 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// MeshEdgeSpec defines the desired state of a MeshEdge.
-type MeshEdgeSpec struct {
-	MeshEdge types.MeshEdge `json:"meshEdge"`
+// MeshEdgeTypeMeta is the type meta for a MeshEdge.
+var MeshEdgeTypeMeta = metav1.TypeMeta{
+	APIVersion: GroupVersion.String(),
+	Kind:       "MeshEdge",
 }
-
-// MeshEdgeStatus defines the observed state of a MeshEdge.
-type MeshEdgeStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -36,9 +34,7 @@ type MeshEdgeStatus struct{}
 type MeshEdge struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   MeshEdgeSpec   `json:"spec,omitempty"`
-	Status MeshEdgeStatus `json:"status,omitempty"`
+	types.MeshEdge    `json:",inline"`
 }
 
 //+kubebuilder:object:root=true

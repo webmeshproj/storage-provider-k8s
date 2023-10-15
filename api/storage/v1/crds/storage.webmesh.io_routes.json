@@ -27,6 +27,13 @@
                 "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
                 "type": "string"
               },
+              "destinationCIDRs": {
+                "description": "destination_cidrs are the destination CIDRs of the route.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
               "kind": {
                 "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
                 "type": "string"
@@ -34,43 +41,17 @@
               "metadata": {
                 "type": "object"
               },
-              "spec": {
-                "description": "RouteSpec defines the desired state of a Route.",
-                "properties": {
-                  "route": {
-                    "description": "Route wraps a Route.",
-                    "properties": {
-                      "destinationCIDRs": {
-                        "description": "destination_cidrs are the destination CIDRs of the route.",
-                        "items": {
-                          "type": "string"
-                        },
-                        "type": "array"
-                      },
-                      "name": {
-                        "description": "name is the name of the route.",
-                        "type": "string"
-                      },
-                      "nextHopNode": {
-                        "description": "nextHopNode is an optional node that is used as the next hop for the route.",
-                        "type": "string"
-                      },
-                      "node": {
-                        "description": "node is the node that broadcasts the route. A group can be specified with the prefix \"group:\".",
-                        "type": "string"
-                      }
-                    },
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "route"
-                ],
-                "type": "object"
+              "name": {
+                "description": "name is the name of the route.",
+                "type": "string"
               },
-              "status": {
-                "description": "RouteStatus defines the observed state of a Route.",
-                "type": "object"
+              "nextHopNode": {
+                "description": "nextHopNode is an optional node that is used as the next hop for the route.",
+                "type": "string"
+              },
+              "node": {
+                "description": "node is the node that broadcasts the route. A group can be specified with the prefix \"group:\".",
+                "type": "string"
               }
             },
             "type": "object"

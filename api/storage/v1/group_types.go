@@ -21,13 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// GroupSpec defines the desired state of a Group.
-type GroupSpec struct {
-	Group types.Group `json:"group"`
+// GroupTypeMeta is the type meta for a Group.
+var GroupTypeMeta = metav1.TypeMeta{
+	APIVersion: GroupVersion.String(),
+	Kind:       "Group",
 }
-
-// GroupStatus defines the observed state of a Group.
-type GroupStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -36,9 +34,7 @@ type GroupStatus struct{}
 type Group struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   GroupSpec   `json:"spec,omitempty"`
-	Status GroupStatus `json:"status,omitempty"`
+	types.Group       `json:",inline"`
 }
 
 //+kubebuilder:object:root=true

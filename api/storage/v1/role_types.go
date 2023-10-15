@@ -21,13 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// RoleSpec defines the desired state of a Role.
-type RoleSpec struct {
-	Role types.Role `json:"role"`
+// RoleTypeMeta is the type meta for a Role.
+var RoleTypeMeta = metav1.TypeMeta{
+	APIVersion: GroupVersion.String(),
+	Kind:       "Role",
 }
-
-// RoleStatus defines the observed state of a Role.
-type RoleStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -36,9 +34,7 @@ type RoleStatus struct{}
 type Role struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   RoleSpec   `json:"spec,omitempty"`
-	Status RoleStatus `json:"status,omitempty"`
+	types.Role        `json:",omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -17,17 +17,15 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/webmeshproj/api/v1"
+	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// StoragePeer defines a peer in the storage consensus group.
-type StoragePeerSpec struct {
-	Peer *v1.StoragePeer `json:"peer"`
+// StoragePeerTypeMeta is the type meta for a StoragePeer.
+var StoragePeerTypeMeta = metav1.TypeMeta{
+	APIVersion: GroupVersion.String(),
+	Kind:       "StoragePeer",
 }
-
-// StoragePeerStatus defines the observed state of a Route.
-type StoragePeerStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -36,9 +34,7 @@ type StoragePeerStatus struct{}
 type StoragePeer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   StoragePeerSpec   `json:"spec,omitempty"`
-	Status StoragePeerStatus `json:"status,omitempty"`
+	types.StoragePeer `json:",inline"`
 }
 
 //+kubebuilder:object:root=true

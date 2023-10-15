@@ -21,13 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// RouteSpec defines the desired state of a Route.
-type RouteSpec struct {
-	Route types.Route `json:"route"`
+// RouteTypeMeta is the type meta for a Route.
+var RouteTypeMeta = metav1.TypeMeta{
+	APIVersion: GroupVersion.String(),
+	Kind:       "Route",
 }
-
-// RouteStatus defines the observed state of a Route.
-type RouteStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -36,9 +34,7 @@ type RouteStatus struct{}
 type Route struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   RouteSpec   `json:"spec,omitempty"`
-	Status RouteStatus `json:"status,omitempty"`
+	types.Route       `json:",inline"`
 }
 
 //+kubebuilder:object:root=true

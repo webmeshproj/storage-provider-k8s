@@ -24,6 +24,8 @@ spec:
               of an object. Servers should convert recognized schemas to the latest
               internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
+          domain:
+            type: string
           kind:
             description: 'Kind is a string value representing the REST resource this
               object represents. Servers may infer this from the endpoint the client
@@ -31,16 +33,10 @@ spec:
             type: string
           metadata:
             type: object
-          networkState:
-            description: NetworkState is the network state.
-            properties:
-              domain:
-                type: string
-              networkV4:
-                type: string
-              networkV6:
-                type: string
-            type: object
+          networkV4:
+            type: string
+          networkV6:
+            type: string
         type: object
     served: true
     storage: true

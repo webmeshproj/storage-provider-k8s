@@ -21,13 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// PeerSpec defines the desired state of a Peer.
-type PeerSpec struct {
-	Node types.MeshNode `json:"node"`
+// PeerTypeMeta is the type meta for a Peer.
+var PeerTypeMeta = metav1.TypeMeta{
+	APIVersion: GroupVersion.String(),
+	Kind:       "Peer",
 }
-
-// PeerStatus defines the observed state of a Peer.
-type PeerStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -36,9 +34,7 @@ type PeerStatus struct{}
 type Peer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   PeerSpec   `json:"spec,omitempty"`
-	Status PeerStatus `json:"status,omitempty"`
+	types.MeshNode    `json:",inline"`
 }
 
 //+kubebuilder:object:root=true

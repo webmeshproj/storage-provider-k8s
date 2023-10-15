@@ -302,11 +302,11 @@ func (p *Provider) Bootstrap(ctx context.Context) error {
 		return errors.ErrAlreadyBootstrapped
 	}
 	// We create ourselves as a voter.
-	return p.consensus.AddVoter(ctx, &v1.StoragePeer{
+	return p.consensus.AddVoter(ctx, types.StoragePeer{StoragePeer: &v1.StoragePeer{
 		Id:            p.NodeID,
 		Address:       fmt.Sprintf("%s:%d", p.NodeID, p.lport),
 		ClusterStatus: v1.ClusterStatus_CLUSTER_LEADER,
-	})
+	}})
 }
 
 // Status returns the status of the storage provider.
@@ -362,7 +362,7 @@ func (p *Provider) Status() *v1.StorageStatus {
 				if peer.Id == p.NodeID && p.consensus.IsLeader() {
 					pr.ClusterStatus = v1.ClusterStatus_CLUSTER_LEADER
 				}
-				out = append(out, pr)
+				out = append(out, pr.StoragePeer)
 			}
 			return out
 		}(),

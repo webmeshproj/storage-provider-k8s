@@ -25,6 +25,7 @@ import (
 	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
+	"github.com/webmeshproj/webmesh/pkg/storage/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -40,26 +41,21 @@ var _ storage.Consensus = &Consensus{}
 //+kubebuilder:rbac:groups=storage.webmesh.io,resources=storagepeers/status,verbs=get;update;patch
 
 const (
-	// StoragePeersSecret is the name of the secret used to store the peers.
-	StoragePeersSecret = "webmesh-storage-peers"
 	// ConsensusTraceVLevel is the trace level for the consensus package.
 	ConsensusTraceVLevel = 2
 )
 
 // HashNodeID hashed a node ID into a compatible kubernetes object name.
-func HashID(id string) (string, error) {
+func HashID(id string) string {
 	h := sha1.New()
-	_, err := h.Write([]byte(id))
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	h.Write([]byte(id))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // Consensus is the consensus interface for the storage provider.
 type Consensus struct {
 	*Provider
-	self *v1.StoragePeer
+	self types.StoragePeer
 	mu   sync.Mutex
 }
 
@@ -80,31 +76,31 @@ func (c *Consensus) IsMember() bool {
 }
 
 // StepDown is a no-op for now, but hooks can potentially be given to the
-// overlay to perform some action when the node steps down.
+// caller to perform some action when the node steps down.
 func (c *Consensus) StepDown(ctx context.Context) error {
 	return nil
 }
 
 // GetPeer returns the peers of the storage group.
-func (c *Consensus) GetPeer(ctx context.Context, id string) (*v1.StoragePeer, error) {
+func (c *Consensus) GetPeer(ctx context.Context, id string) (types.StoragePeer, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.trace(ctx, "Getting peer", "id", id)
 	peers, err := c.getPeers(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get peers: %w", err)
+		return types.StoragePeer{}, fmt.Errorf("get peers: %w", err)
 	}
 	c.trace(ctx, "Listed peers", "peers", peers)
 	for _, p := range peers {
-		if p.Spec.Peer.GetId() == id {
-			return p.Spec.Peer, nil
+		if p.GetId() == id {
+			return p.StoragePeer, nil
 		}
 	}
-	return nil, errors.ErrNodeNotFound
+	return types.StoragePeer{}, errors.ErrNodeNotFound
 }
 
 // GetPeers returns the peers of the storage group.
-func (c *Consensus) GetPeers(ctx context.Context) ([]*v1.StoragePeer, error) {
+func (c *Consensus) GetPeers(ctx context.Context) ([]types.StoragePeer, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.trace(ctx, "Listing peers")
@@ -113,32 +109,32 @@ func (c *Consensus) GetPeers(ctx context.Context) ([]*v1.StoragePeer, error) {
 		return nil, fmt.Errorf("get peers: %w", err)
 	}
 	c.trace(ctx, "Listed peers", "peers", peers)
-	var sps []*v1.StoragePeer
+	var sps []types.StoragePeer
 	for _, p := range peers {
-		sps = append(sps, p.Spec.Peer)
+		sps = append(sps, p.StoragePeer)
 	}
 	return sps, nil
 }
 
 // GetLeader returns the leader of the storage group.
-func (c *Consensus) GetLeader(ctx context.Context) (*v1.StoragePeer, error) {
+func (c *Consensus) GetLeader(ctx context.Context) (types.StoragePeer, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.IsLeader() {
 		// Fast path return ourself if we have it stored.
 		c.trace(ctx, "Returning self as leader")
-		if c.self != nil {
+		if c.self.StoragePeer != nil {
 			return c.self, nil
 		}
 	}
 	c.trace(ctx, "Getting leader from peer list")
 	peers, err := c.getPeers(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get peers: %w", err)
+		return types.StoragePeer{}, fmt.Errorf("get peers: %w", err)
 	}
 	c.trace(ctx, "Got peers list", "peers", peers)
 	for _, p := range peers {
-		peer := p.Spec.Peer
+		peer := p.StoragePeer
 		if c.leaders.GetLeader() == peer.GetId() {
 			if c.IsLeader() {
 				// Store ourself as the leader.
@@ -149,98 +145,75 @@ func (c *Consensus) GetLeader(ctx context.Context) (*v1.StoragePeer, error) {
 		}
 	}
 	c.trace(ctx, "No leader found")
-	return nil, errors.ErrNoLeader
+	return types.StoragePeer{}, errors.ErrNoLeader
 }
 
 // AddVoter adds a voter to the consensus group.
-func (c *Consensus) AddVoter(ctx context.Context, peer *v1.StoragePeer) error {
+func (c *Consensus) AddVoter(ctx context.Context, peer types.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	name, err := HashID(peer.GetId())
-	if err != nil {
-		return err
-	}
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_VOTER
 	c.trace(ctx, "Adding voter", "peer", peer)
 	stpeer := storagev1.StoragePeer{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "StoragePeer",
-			APIVersion: storagev1.GroupVersion.String(),
-		},
+		TypeMeta: storagev1.StoragePeerTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      HashID(peer.GetId()),
 			Namespace: c.Namespace,
+			Labels: map[string]string{
+				storagev1.NodeIDLabel: peer.GetId(),
+			},
 		},
-		Spec: storagev1.StoragePeerSpec{
-			Peer: peer,
-		},
+		StoragePeer: peer,
 	}
 	return util.PatchObject(ctx, c.mgr.GetClient(), &stpeer)
 }
 
 // AddObserver adds an observer to the consensus group.
-func (c *Consensus) AddObserver(ctx context.Context, peer *v1.StoragePeer) error {
+func (c *Consensus) AddObserver(ctx context.Context, peer types.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	name, err := HashID(peer.GetId())
-	if err != nil {
-		return err
-	}
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
 	c.trace(ctx, "Adding observer", "peer", peer)
 	stpeer := storagev1.StoragePeer{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "StoragePeer",
-			APIVersion: storagev1.GroupVersion.String(),
-		},
+		TypeMeta: storagev1.StoragePeerTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      HashID(peer.GetId()),
 			Namespace: c.Namespace,
+			Labels: map[string]string{
+				storagev1.NodeIDLabel: peer.GetId(),
+			},
 		},
-		Spec: storagev1.StoragePeerSpec{
-			Peer: peer,
-		},
+		StoragePeer: peer,
 	}
 	return util.PatchObject(ctx, c.mgr.GetClient(), &stpeer)
 }
 
 // DemoteVoter demotes a voter to an observer.
-func (c *Consensus) DemoteVoter(ctx context.Context, peer *v1.StoragePeer) error {
+func (c *Consensus) DemoteVoter(ctx context.Context, peer types.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	name, err := HashID(peer.GetId())
-	if err != nil {
-		return err
-	}
 	var stpeer storagev1.StoragePeer
-	err = c.mgr.GetClient().Get(ctx, client.ObjectKey{
-		Name:      name,
+	err := c.mgr.GetClient().Get(ctx, client.ObjectKey{
+		Name:      HashID(peer.GetId()),
 		Namespace: c.Namespace,
 	}, &stpeer)
 	if err != nil {
 		return err
 	}
 	c.trace(ctx, "Demoting voter", "peer", peer)
-	stpeer.Spec.Peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
+	stpeer.StoragePeer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
 	return util.PatchObject(ctx, c.mgr.GetClient(), &stpeer)
 }
 
 // RemovePeer removes a peer from the consensus group.
-func (c *Consensus) RemovePeer(ctx context.Context, peer *v1.StoragePeer, wait bool) error {
+func (c *Consensus) RemovePeer(ctx context.Context, peer types.StoragePeer, wait bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.trace(ctx, "Removing peer", "peer", peer)
-	name, err := HashID(peer.GetId())
-	if err != nil {
-		return err
-	}
-	err = c.mgr.GetClient().Delete(ctx, &storagev1.StoragePeer{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "StoragePeer",
-			APIVersion: storagev1.GroupVersion.String(),
-		},
+	err := c.mgr.GetClient().Delete(ctx, &storagev1.StoragePeer{
+		TypeMeta: storagev1.StoragePeerTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      HashID(peer.GetId()),
 			Namespace: c.Namespace,
 		},
 	})
@@ -253,7 +226,7 @@ func (c *Consensus) getPeers(ctx context.Context) ([]storagev1.StoragePeer, erro
 	return peers.Items, client.IgnoreNotFound(err)
 }
 
-func (c *Consensus) containsPeer(peers []*v1.StoragePeer, peer string) bool {
+func (c *Consensus) containsPeer(peers []types.StoragePeer, peer string) bool {
 	for _, p := range peers {
 		if p.GetId() == peer {
 			return true

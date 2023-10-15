@@ -21,13 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// NetworkACLSpec defines the desired state of a NetworkACL.
-type NetworkACLSpec struct {
-	NetworkACL types.NetworkACL `json:"networkACL"`
+// NetworkACLTypeMeta is the type meta for a NetworkACL.
+var NetworkACLTypeMeta = metav1.TypeMeta{
+	APIVersion: GroupVersion.String(),
+	Kind:       "NetworkACL",
 }
-
-// NetworkACLStatus defines the observed state of a NetworkACL.
-type NetworkACLStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -36,9 +34,7 @@ type NetworkACLStatus struct{}
 type NetworkACL struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   NetworkACLSpec   `json:"spec,omitempty"`
-	Status NetworkACLStatus `json:"status,omitempty"`
+	types.NetworkACL  `json:",inline"`
 }
 
 //+kubebuilder:object:root=true

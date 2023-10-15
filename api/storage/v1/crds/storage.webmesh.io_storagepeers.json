@@ -23,8 +23,21 @@
           "openAPIV3Schema": {
             "description": "StoragePeer is the Schema for the StoragePeer API.",
             "properties": {
+              "address": {
+                "description": "Address is the address of the server. This is not required for demotion or removal RPCs.",
+                "type": "string"
+              },
               "apiVersion": {
                 "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                "type": "string"
+              },
+              "clusterStatus": {
+                "description": "ClusterStatus is the status of the server. This is only applicable during a GetStatus RPC.",
+                "format": "int32",
+                "type": "integer"
+              },
+              "id": {
+                "description": "ID is the id of the server.",
                 "type": "string"
               },
               "kind": {
@@ -34,41 +47,9 @@
               "metadata": {
                 "type": "object"
               },
-              "spec": {
-                "description": "StoragePeer defines a peer in the storage consensus group.",
-                "properties": {
-                  "peer": {
-                    "description": "StoragePeer is a server that is currently recognized by the storage plugin.",
-                    "properties": {
-                      "address": {
-                        "description": "Address is the address of the server. This is not required for demotion or removal RPCs.",
-                        "type": "string"
-                      },
-                      "clusterStatus": {
-                        "description": "ClusterStatus is the status of the server. This is only applicable during a GetStatus RPC.",
-                        "format": "int32",
-                        "type": "integer"
-                      },
-                      "id": {
-                        "description": "ID is the id of the server.",
-                        "type": "string"
-                      },
-                      "publicKey": {
-                        "description": "public_key is the encoded public key of the server. This is not required for demotion or removal RPCs. Not all implementations need to support this.",
-                        "type": "string"
-                      }
-                    },
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "peer"
-                ],
-                "type": "object"
-              },
-              "status": {
-                "description": "StoragePeerStatus defines the observed state of a Route.",
-                "type": "object"
+              "publicKey": {
+                "description": "public_key is the encoded public key of the server. This is not required for demotion or removal RPCs. Not all implementations need to support this.",
+                "type": "string"
               }
             },
             "type": "object"

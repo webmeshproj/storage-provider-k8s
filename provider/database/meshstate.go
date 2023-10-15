@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"sync"
 
-	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
 	"github.com/webmeshproj/webmesh/pkg/storage/errors"
 	"github.com/webmeshproj/webmesh/pkg/storage/types"
@@ -65,9 +64,8 @@ func (st *MeshState) SetMeshState(ctx context.Context, state types.NetworkState)
 	if err != nil {
 		return err
 	}
-	// Update the state.
-	currentState.NetworkState = state.NetworkState
 	// Patch the state.
+	currentState.NetworkState = state
 	return util.PatchObject(ctx, st.cli, currentState)
 }
 
@@ -87,7 +85,7 @@ func (st *MeshState) GetMeshState(ctx context.Context) (types.NetworkState, erro
 	if state.NetworkState.GetNetworkV4() == "" && state.NetworkState.GetNetworkV6() == "" {
 		return types.NetworkState{}, errors.NewKeyNotFoundError([]byte("mesh network"))
 	}
-	return types.NetworkState{NetworkState: state.NetworkState}, nil
+	return state.NetworkState, nil
 }
 
 // fetchState fetches the current state.
@@ -102,24 +100,17 @@ func (st *MeshState) fetchState(ctx context.Context) (*storagev1.MeshState, erro
 			// Return an empty state if the config doesn't exist.
 			ctrl.Log.WithName("meshstate").V(2).Info("State does not exist yet, returning empty state")
 			return &storagev1.MeshState{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "MeshState",
-					APIVersion: storagev1.GroupVersion.String(),
-				},
+				TypeMeta: storagev1.MeshStateTypeMeta,
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: st.namespace,
 					Name:      MeshStateConfigName,
 				},
-				NetworkState: &v1.NetworkState{},
 			}, nil
 		}
 		return nil, fmt.Errorf("fetch mesh state: %w", err)
 	}
 	ctrl.Log.WithName("meshstate").V(2).Info("Current state", "state", state)
 	// Ensure type meta is present for a call to patch.
-	state.TypeMeta = metav1.TypeMeta{
-		Kind:       "MeshState",
-		APIVersion: storagev1.GroupVersion.String(),
-	}
+	state.TypeMeta = storagev1.MeshStateTypeMeta
 	return &state, nil
 }

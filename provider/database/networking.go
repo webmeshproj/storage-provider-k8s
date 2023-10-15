@@ -56,15 +56,12 @@ func NewNetworking(cli client.Client, namespace string) *Networking {
 // PutNetworkACL creates or updates a NetworkACL.
 func (nw *Networking) PutNetworkACL(ctx context.Context, acl types.NetworkACL) error {
 	var nacl storagev1.NetworkACL
-	nacl.TypeMeta = metav1.TypeMeta{
-		APIVersion: storagev1.GroupVersion.String(),
-		Kind:       "NetworkACL",
-	}
+	nacl.TypeMeta = storagev1.NetworkACLTypeMeta
 	nacl.ObjectMeta = metav1.ObjectMeta{
 		Name:      acl.Name,
 		Namespace: nw.namespace,
 	}
-	nacl.Spec.NetworkACL = acl
+	nacl.NetworkACL = acl
 	return util.PatchObject(ctx, nw.cli, &nacl)
 }
 
@@ -81,16 +78,13 @@ func (nw *Networking) GetNetworkACL(ctx context.Context, name string) (types.Net
 		}
 		return types.NetworkACL{}, err
 	}
-	return nacl.Spec.NetworkACL, nil
+	return nacl.NetworkACL, nil
 }
 
 // DeleteNetworkACL deletes a NetworkACL by name.
 func (nw *Networking) DeleteNetworkACL(ctx context.Context, name string) error {
 	err := nw.cli.Delete(ctx, &storagev1.NetworkACL{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: storagev1.GroupVersion.String(),
-			Kind:       "NetworkACL",
-		},
+		TypeMeta: storagev1.NetworkACLTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: nw.namespace,
@@ -111,7 +105,7 @@ func (nw *Networking) ListNetworkACLs(ctx context.Context) (types.NetworkACLs, e
 	}
 	acls := make(types.NetworkACLs, len(nacls.Items))
 	for i, nacl := range nacls.Items {
-		acls[i] = nacl.Spec.NetworkACL
+		acls[i] = nacl.NetworkACL
 	}
 	return acls, nil
 }
@@ -119,10 +113,7 @@ func (nw *Networking) ListNetworkACLs(ctx context.Context) (types.NetworkACLs, e
 // PutRoute creates or updates a Route.
 func (nw *Networking) PutRoute(ctx context.Context, route types.Route) error {
 	var r storagev1.Route
-	r.TypeMeta = metav1.TypeMeta{
-		APIVersion: storagev1.GroupVersion.String(),
-		Kind:       "Route",
-	}
+	r.TypeMeta = storagev1.RouteTypeMeta
 	r.ObjectMeta = metav1.ObjectMeta{
 		Name:      route.Name,
 		Namespace: nw.namespace,
@@ -130,7 +121,7 @@ func (nw *Networking) PutRoute(ctx context.Context, route types.Route) error {
 			RouteNodeLabel: route.GetNode(),
 		},
 	}
-	r.Spec.Route = route
+	r.Route = route
 	return util.PatchObject(ctx, nw.cli, &r)
 }
 
@@ -147,7 +138,7 @@ func (nw *Networking) GetRoute(ctx context.Context, name string) (types.Route, e
 		}
 		return types.Route{}, err
 	}
-	return r.Spec.Route, nil
+	return r.Route, nil
 }
 
 // GetRoutesByNode returns a list of Routes for a given Node.
@@ -164,7 +155,7 @@ func (nw *Networking) GetRoutesByNode(ctx context.Context, nodeID types.NodeID) 
 	}
 	rs := make(types.Routes, len(routelist.Items))
 	for i, route := range routelist.Items {
-		rs[i] = route.Spec.Route
+		rs[i] = route.Route
 	}
 	return rs, nil
 }
@@ -181,9 +172,9 @@ func (nw *Networking) GetRoutesByCIDR(ctx context.Context, cidr netip.Prefix) (t
 	}
 	rs := make(types.Routes, 0, len(routelist.Items))
 	for _, route := range routelist.Items {
-		for _, prefix := range route.Spec.Route.DestinationPrefixes() {
+		for _, prefix := range route.Route.DestinationPrefixes() {
 			if prefix.Bits() == cidr.Bits() && prefix.Addr().Compare(cidr.Addr()) == 0 {
-				rs = append(rs, route.Spec.Route)
+				rs = append(rs, route.Route)
 				break
 			}
 		}
@@ -194,10 +185,7 @@ func (nw *Networking) GetRoutesByCIDR(ctx context.Context, cidr netip.Prefix) (t
 // DeleteRoute deletes a Route by name.
 func (nw *Networking) DeleteRoute(ctx context.Context, name string) error {
 	err := nw.cli.Delete(ctx, &storagev1.Route{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: storagev1.GroupVersion.String(),
-			Kind:       "Route",
-		},
+		TypeMeta: storagev1.RouteTypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: nw.namespace,
@@ -218,7 +206,7 @@ func (nw *Networking) ListRoutes(ctx context.Context) (types.Routes, error) {
 	}
 	rs := make(types.Routes, len(routes.Items))
 	for i, route := range routes.Items {
-		rs[i] = route.Spec.Route
+		rs[i] = route.Route
 	}
 	return rs, nil
 }

@@ -153,7 +153,7 @@ func (db *Database) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resul
 			return ctrl.Result{}, fmt.Errorf("get peer: %w", err)
 		}
 		// We'll notify an empty peer
-		peer.Spec.Node = types.MeshNode{
+		peer.MeshNode = types.MeshNode{
 			MeshNode: &v1.MeshNode{Id: req.Name},
 		}
 	}
@@ -165,7 +165,7 @@ func (db *Database) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resul
 			continue
 		default:
 		}
-		sub.fn([]types.MeshNode{peer.Spec.Node})
+		sub.fn([]types.MeshNode{peer.MeshNode})
 	}
 	return ctrl.Result{}, nil
 }
@@ -185,7 +185,7 @@ func (db *Database) GetPeerByIPv4Addr(ctx context.Context, addr netip.Prefix) (t
 	if len(peers.Items) == 0 {
 		return types.MeshNode{}, errors.ErrNodeNotFound
 	}
-	return peers.Items[0].Spec.Node, nil
+	return peers.Items[0].MeshNode, nil
 }
 
 // GetPeerByIP returns the peer with the given IP address.
@@ -203,5 +203,5 @@ func (db *Database) GetPeerByIPv6Addr(ctx context.Context, addr netip.Prefix) (t
 	if len(peers.Items) == 0 {
 		return types.MeshNode{}, errors.ErrNodeNotFound
 	}
-	return peers.Items[0].Spec.Node, nil
+	return peers.Items[0].MeshNode, nil
 }
