@@ -42,7 +42,7 @@ var _ storage.MeshDataStore = &Database{}
 
 // Database is a MeshDB implementation using Kubernetes custom resources.
 type Database struct {
-	mgr     manager.Manager
+	cli     client.Client
 	laddr   *net.TCPAddr
 	graph   *GraphStore
 	rbac    *RBAC
@@ -67,16 +67,22 @@ func New(mgr manager.Manager, opts Options) (storage.MeshDB, *Database, error) {
 	return meshdb.New(db), db, nil
 }
 
+// NewFromClient returns a database from the given client. It does not
+// intialize any controllers.
+func NewFromClient(cli client.Client, opts Options) *Database {
+	return &Database{
+		cli:     cli,
+		laddr:   opts.ListenAddr,
+		graph:   NewGraphStore(cli, opts.Namespace),
+		rbac:    NewRBAC(cli, opts.Namespace),
+		state:   NewMeshState(cli, opts.Namespace),
+		network: NewNetworking(cli, opts.Namespace),
+	}
+}
+
 // NewDB returns a new MeshDataStore instance.
 func NewDB(mgr manager.Manager, opts Options) (*Database, error) {
-	db := &Database{
-		mgr:     mgr,
-		laddr:   opts.ListenAddr,
-		graph:   NewGraphStore(mgr.GetClient(), opts.Namespace),
-		rbac:    NewRBAC(mgr.GetClient(), opts.Namespace),
-		state:   NewMeshState(mgr.GetClient(), opts.Namespace),
-		network: NewNetworking(mgr.GetClient(), opts.Namespace),
-	}
+	db := NewFromClient(mgr.GetClient(), opts)
 	err := ctrl.
 		NewControllerManagedBy(mgr).
 		Named("meshdb-k8s").
@@ -173,7 +179,7 @@ func (db *Database) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resul
 // GetPeerByIP returns the peer with the given IP address.
 func (db *Database) GetPeerByIPv4Addr(ctx context.Context, addr netip.Prefix) (types.MeshNode, error) {
 	var peers storagev1.PeerList
-	err := db.mgr.GetClient().List(context.Background(), &peers,
+	err := db.cli.List(context.Background(), &peers,
 		client.InNamespace(db.graph.namespace),
 		client.MatchingLabels{
 			storagev1.NodeIPv4Label: HashLabelValue(addr.String()),
@@ -191,7 +197,7 @@ func (db *Database) GetPeerByIPv4Addr(ctx context.Context, addr netip.Prefix) (t
 // GetPeerByIP returns the peer with the given IP address.
 func (db *Database) GetPeerByIPv6Addr(ctx context.Context, addr netip.Prefix) (types.MeshNode, error) {
 	var peers storagev1.PeerList
-	err := db.mgr.GetClient().List(context.Background(), &peers,
+	err := db.cli.List(context.Background(), &peers,
 		client.InNamespace(db.graph.namespace),
 		client.MatchingLabels{
 			storagev1.NodeIPv6Label: HashLabelValue(addr.String()),
