@@ -134,7 +134,7 @@ func NewObserverWithManager(mgr manager.Manager, options Options) (*Provider, er
 		log:     ctrl.Log.WithName("storage-provider"),
 	}
 	p.storage = &Storage{Provider: p}
-	p.consensus = &Consensus{Provider: p, isObserver: true}
+	p.consensus = &Consensus{provider: p, isObserver: true}
 	err := p.setupWithManager(mgr, options, true)
 	if err != nil {
 		return nil, fmt.Errorf("setup provider with manager: %w", err)
@@ -152,7 +152,7 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 		log:     ctrl.Log.WithName("storage-provider"),
 	}
 	p.storage = &Storage{Provider: p}
-	p.consensus = &Consensus{Provider: p, isObserver: false}
+	p.consensus = &Consensus{provider: p, isObserver: false}
 	err := p.setupWithManager(mgr, options, false)
 	if err != nil {
 		return nil, fmt.Errorf("setup provider with manager: %w", err)
