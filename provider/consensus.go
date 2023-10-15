@@ -137,6 +137,12 @@ func (c *Consensus) GetLeader(ctx context.Context) (types.StoragePeer, error) {
 			c.self = peer
 			return peer, nil
 		}
+		if !c.isObserver && c.leaders.GetLeader() == peer.GetId() {
+			// We may not always have an accurate leader written to the backend.
+			// We trust what our leader elector says
+			peer.ClusterStatus = v1.ClusterStatus_CLUSTER_LEADER
+			return peer, nil
+		}
 		if c.isObserver && peer.GetClusterStatus() == v1.ClusterStatus_CLUSTER_VOTER {
 			// We consider any voting node a leader when we are an observer.
 			c.trace(ctx, "Running as observer, returning voting node as leader", "peer", peer)
