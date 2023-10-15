@@ -185,9 +185,6 @@ func (c *Consensus) AddVoter(ctx context.Context, peer types.StoragePeer) error 
 func (c *Consensus) AddObserver(ctx context.Context, peer types.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.isObserver {
-		return errors.ErrNotStorageNode
-	}
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
 	c.trace(ctx, "Adding observer", "peer", peer)
 	stpeer := storagev1.StoragePeer{
