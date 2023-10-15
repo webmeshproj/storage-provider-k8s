@@ -20,7 +20,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"sync"
 
 	v1 "github.com/webmeshproj/api/v1"
 	"github.com/webmeshproj/webmesh/pkg/storage"
@@ -57,7 +56,6 @@ type Consensus struct {
 	*Provider
 	isObserver bool
 	self       types.StoragePeer
-	mu         sync.Mutex
 }
 
 func (c *Consensus) trace(ctx context.Context, msg string, args ...interface{}) {
@@ -87,8 +85,6 @@ func (c *Consensus) StepDown(ctx context.Context) error {
 
 // GetPeer returns the peers of the storage group.
 func (c *Consensus) GetPeer(ctx context.Context, id string) (types.StoragePeer, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.trace(ctx, "Getting peer", "id", id)
 	peers, err := c.getPeers(ctx)
 	if err != nil {
@@ -105,8 +101,6 @@ func (c *Consensus) GetPeer(ctx context.Context, id string) (types.StoragePeer, 
 
 // GetPeers returns the peers of the storage group.
 func (c *Consensus) GetPeers(ctx context.Context) ([]types.StoragePeer, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.trace(ctx, "Listing peers")
 	peers, err := c.getPeers(ctx)
 	if err != nil {
@@ -122,8 +116,6 @@ func (c *Consensus) GetPeers(ctx context.Context) ([]types.StoragePeer, error) {
 
 // GetLeader returns the leader of the storage group.
 func (c *Consensus) GetLeader(ctx context.Context) (types.StoragePeer, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.IsLeader() {
 		// Fast path return ourself if we have it stored.
 		if c.self.StoragePeer != nil {
@@ -160,8 +152,6 @@ func (c *Consensus) GetLeader(ctx context.Context) (types.StoragePeer, error) {
 
 // AddVoter adds a voter to the consensus group.
 func (c *Consensus) AddVoter(ctx context.Context, peer types.StoragePeer) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.isObserver {
 		return errors.ErrNotStorageNode
 	}
@@ -183,8 +173,6 @@ func (c *Consensus) AddVoter(ctx context.Context, peer types.StoragePeer) error 
 
 // AddObserver adds an observer to the consensus group.
 func (c *Consensus) AddObserver(ctx context.Context, peer types.StoragePeer) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
 	c.trace(ctx, "Adding observer", "peer", peer)
 	stpeer := storagev1.StoragePeer{
@@ -203,8 +191,6 @@ func (c *Consensus) AddObserver(ctx context.Context, peer types.StoragePeer) err
 
 // DemoteVoter demotes a voter to an observer.
 func (c *Consensus) DemoteVoter(ctx context.Context, peer types.StoragePeer) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.isObserver {
 		return errors.ErrNotStorageNode
 	}
@@ -223,8 +209,6 @@ func (c *Consensus) DemoteVoter(ctx context.Context, peer types.StoragePeer) err
 
 // RemovePeer removes a peer from the consensus group.
 func (c *Consensus) RemovePeer(ctx context.Context, peer types.StoragePeer, wait bool) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.isObserver {
 		// Only allow if we are trying to remove ourself.
 		if peer.GetId() != c.NodeID {
