@@ -98,12 +98,7 @@ type Provider struct {
 
 // New creates a new Provider.
 func New(options Options) (*Provider, error) {
-	laddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("[::]:%d", options.ListenPort))
-	if err != nil {
-		return nil, fmt.Errorf("resolve listen address: %w", err)
-	}
 	mgr, err := manager.New(manager.Options{
-		WebhookPort:     laddr.Port,
 		MetricsPort:     options.MetricsPort,
 		ProbePort:       options.ProbePort,
 		ShutdownTimeout: options.ShutdownTimeout,
@@ -112,6 +107,39 @@ func New(options Options) (*Provider, error) {
 		return nil, fmt.Errorf("create controller manager: %w", err)
 	}
 	return NewWithManager(mgr, options)
+}
+
+// NewObserverWithConfig creates a new observing storage provider with the given rest config.
+// An observing storage provider can still write to storage depending on the given configuration,
+// but it will not be able to mutate or participate in consensus.
+func NewObserverWithConfig(cfg *rest.Config, options Options) (*Provider, error) {
+	mgr, err := manager.NewFromConfig(cfg, manager.Options{
+		MetricsPort:     options.MetricsPort,
+		ProbePort:       options.ProbePort,
+		ShutdownTimeout: options.ShutdownTimeout,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create controller manager: %w", err)
+	}
+	return NewObserverWithManager(mgr, options)
+}
+
+// NewObserverWithManager creates an observing storage provider with the given manager.
+func NewObserverWithManager(mgr manager.Manager, options Options) (*Provider, error) {
+	p := &Provider{
+		Options: options,
+		mgr:     mgr,
+		subs:    make(map[string]Subscription),
+		errc:    make(chan error, 1),
+		log:     ctrl.Log.WithName("storage-provider"),
+	}
+	p.storage = &Storage{Provider: p}
+	p.consensus = &Consensus{Provider: p, isObserver: true}
+	err := p.setupWithManager(mgr, options, true)
+	if err != nil {
+		return nil, fmt.Errorf("setup provider with manager: %w", err)
+	}
+	return p, nil
 }
 
 // NewWithManager creates a new Provider with the given manager.
@@ -124,10 +152,18 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 		log:     ctrl.Log.WithName("storage-provider"),
 	}
 	p.storage = &Storage{Provider: p}
-	p.consensus = &Consensus{Provider: p}
-	laddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("[::]:%d", options.ListenPort))
+	p.consensus = &Consensus{Provider: p, isObserver: false}
+	err := p.setupWithManager(mgr, options, false)
 	if err != nil {
-		return nil, fmt.Errorf("resolve listen address: %w", err)
+		return nil, fmt.Errorf("setup provider with manager: %w", err)
+	}
+	return p, nil
+}
+
+func (p *Provider) setupWithManager(mgr ctrl.Manager, opts Options, isObserver bool) error {
+	laddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("[::]:%d", opts.ListenPort))
+	if err != nil {
+		return fmt.Errorf("resolve listen address: %w", err)
 	}
 	p.laddr = laddr
 	p.lport = uint16(laddr.Port)
@@ -135,7 +171,7 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 		var err error
 		p.Namespace, err = getInClusterNamespace()
 		if err != nil {
-			return nil, fmt.Errorf("get in-cluster namespace: %w", err)
+			return fmt.Errorf("get in-cluster namespace: %w", err)
 		}
 	}
 	// Register the reconciler with the manager.
@@ -145,49 +181,53 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(p.enqueueObjectIfOwner)).
 		Complete(p)
 	if err != nil {
-		return nil, fmt.Errorf("register controller: %w", err)
+		return fmt.Errorf("register controller: %w", err)
 	}
 	// Register the database with the manager
 	p.db, p.datastore, err = database.New(mgr, database.Options{
-		NodeID:     types.NodeID(options.NodeID),
-		Namespace:  options.Namespace,
+		NodeID:     types.NodeID(opts.NodeID),
+		Namespace:  opts.Namespace,
 		ListenAddr: laddr,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("create database: %w", err)
+		return fmt.Errorf("create database: %w", err)
+	}
+	// If we are an observer, we are done here.
+	if isObserver {
+		return nil
 	}
 	// Create clients for leader election
 	cfg := rest.CopyConfig(p.mgr.GetConfig())
 	corev1client, err := corev1client.NewForConfig(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("create corev1 client: %w", err)
+		return fmt.Errorf("create corev1 client: %w", err)
 	}
 	coordinationClient, err := coordinationv1client.NewForConfig(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("create coordinationv1 client: %w", err)
+		return fmt.Errorf("create coordinationv1 client: %w", err)
 	}
 	// Create the leader election lock.
 	rlock, err := resourcelock.New(
 		"leases",
-		options.Namespace,
+		opts.Namespace,
 		LeaderElectionID,
 		corev1client,
 		coordinationClient,
 		resourcelock.ResourceLockConfig{
-			Identity:      options.NodeID,
+			Identity:      opts.NodeID,
 			EventRecorder: p,
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create leader election resource lock: %w", err)
+		return fmt.Errorf("create leader election resource lock: %w", err)
 	}
 	// Create the leader elector.
 	p.leaders, err = leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
 		Name:          "webmesh-storage-leader",
 		Lock:          rlock,
-		LeaseDuration: options.LeaderElectionLeaseDuration,
-		RenewDeadline: options.LeaderElectionRenewDeadline,
-		RetryPeriod:   options.LeaderElectionRetryPeriod,
+		LeaseDuration: opts.LeaderElectionLeaseDuration,
+		RenewDeadline: opts.LeaderElectionRenewDeadline,
+		RetryPeriod:   opts.LeaderElectionRetryPeriod,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				p.log.Info("Acquired leader lease")
@@ -202,9 +242,9 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 		ReleaseOnCancel: true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("create leader elector: %w", err)
+		return fmt.Errorf("create leader elector: %w", err)
 	}
-	return p, nil
+	return nil
 }
 
 // Start starts the provider.

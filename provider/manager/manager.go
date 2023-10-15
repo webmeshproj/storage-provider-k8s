@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	storagev1 "github.com/webmeshproj/storage-provider-k8s/api/storage/v1"
 )
@@ -43,8 +42,6 @@ type Manager = ctrl.Manager
 
 // Options are the options for configuring the manager.
 type Options struct {
-	// WebhookPort is the address to bind the webhook server to.
-	WebhookPort int
 	// MetricsAddr is the address to bind the metrics endpoint to.
 	MetricsPort int
 	// ProbeAddr is the address to bind the health probe endpoint to.
@@ -91,9 +88,6 @@ func NewFromConfig(cfg *rest.Config, opts Options) (Manager, error) {
 		Metrics: server.Options{
 			BindAddress: metricsAddr,
 		},
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Port: opts.WebhookPort,
-		}),
 		Controller: config.Controller{
 			// Leader election is handled by the provider.
 			NeedLeaderElection: &[]bool{false}[0],

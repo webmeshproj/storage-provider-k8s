@@ -61,7 +61,6 @@ func setupTestProviders(t *testing.T, count int) []storage.Provider {
 		mgr, err := manager.NewFromConfig(cfg, manager.Options{
 			ShutdownTimeout: time.Second * 3,
 			DisableCache:    true,
-			WebhookPort:     0,
 			MetricsPort:     0,
 			ProbePort:       0,
 		})

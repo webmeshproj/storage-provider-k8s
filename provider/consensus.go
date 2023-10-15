@@ -55,8 +55,9 @@ func HashID(id string) string {
 // Consensus is the consensus interface for the storage provider.
 type Consensus struct {
 	*Provider
-	self types.StoragePeer
-	mu   sync.Mutex
+	isObserver bool
+	self       types.StoragePeer
+	mu         sync.Mutex
 }
 
 func (c *Consensus) trace(ctx context.Context, msg string, args ...interface{}) {
@@ -67,6 +68,9 @@ func (c *Consensus) trace(ctx context.Context, msg string, args ...interface{}) 
 
 // IsLeader returns true if the node is the leader of the storage group.
 func (c *Consensus) IsLeader() bool {
+	if c.isObserver {
+		return false
+	}
 	return c.leaders.IsLeader()
 }
 
@@ -135,12 +139,13 @@ func (c *Consensus) GetLeader(ctx context.Context) (types.StoragePeer, error) {
 	c.trace(ctx, "Got peers list", "peers", peers)
 	for _, p := range peers {
 		peer := p.StoragePeer
-		if c.leaders.GetLeader() == peer.GetId() {
-			if c.IsLeader() {
-				// Store ourself as the leader.
-				c.trace(ctx, "Storing and returning self as leader")
-				c.self = peer
-			}
+		if !c.isObserver && c.leaders.GetLeader() == peer.GetId() && c.IsLeader() {
+			// Store ourself as the leader.
+			c.trace(ctx, "Storing and returning self as leader")
+			c.self = peer
+			return peer, nil
+		}
+		if peer.ClusterStatus == v1.ClusterStatus_CLUSTER_LEADER {
 			return peer, nil
 		}
 	}
@@ -152,6 +157,9 @@ func (c *Consensus) GetLeader(ctx context.Context) (types.StoragePeer, error) {
 func (c *Consensus) AddVoter(ctx context.Context, peer types.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.isObserver {
+		return errors.ErrNotStorageNode
+	}
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_VOTER
 	c.trace(ctx, "Adding voter", "peer", peer)
 	stpeer := storagev1.StoragePeer{
@@ -172,6 +180,9 @@ func (c *Consensus) AddVoter(ctx context.Context, peer types.StoragePeer) error 
 func (c *Consensus) AddObserver(ctx context.Context, peer types.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.isObserver {
+		return errors.ErrNotStorageNode
+	}
 	peer.ClusterStatus = v1.ClusterStatus_CLUSTER_OBSERVER
 	c.trace(ctx, "Adding observer", "peer", peer)
 	stpeer := storagev1.StoragePeer{
@@ -192,6 +203,9 @@ func (c *Consensus) AddObserver(ctx context.Context, peer types.StoragePeer) err
 func (c *Consensus) DemoteVoter(ctx context.Context, peer types.StoragePeer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.isObserver {
+		return errors.ErrNotStorageNode
+	}
 	var stpeer storagev1.StoragePeer
 	err := c.mgr.GetClient().Get(ctx, client.ObjectKey{
 		Name:      HashID(peer.GetId()),
@@ -209,6 +223,9 @@ func (c *Consensus) DemoteVoter(ctx context.Context, peer types.StoragePeer) err
 func (c *Consensus) RemovePeer(ctx context.Context, peer types.StoragePeer, wait bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.isObserver {
+		return errors.ErrNotStorageNode
+	}
 	c.trace(ctx, "Removing peer", "peer", peer)
 	err := c.mgr.GetClient().Delete(ctx, &storagev1.StoragePeer{
 		TypeMeta: storagev1.StoragePeerTypeMeta,
