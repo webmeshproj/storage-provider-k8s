@@ -232,13 +232,11 @@ func (c *Consensus) RemovePeer(ctx context.Context, peer types.StoragePeer, wait
 		}
 	}
 	c.trace(ctx, "Removing peer", "peer", peer)
-	return c.RemovePeerByIDHash(ctx, HashID(peer.GetId()))
+	return c.removePeerByIDHash(ctx, HashID(peer.GetId()))
 }
 
 // RemovePeerByIDHash removes a peer from the consensus group using their ID hash.
-func (c *Consensus) RemovePeerByIDHash(ctx context.Context, idHash string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *Consensus) removePeerByIDHash(ctx context.Context, idHash string) error {
 	if c.isObserver {
 		return errors.ErrNotStorageNode
 	}
