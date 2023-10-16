@@ -74,6 +74,8 @@ type Options struct {
 	LeaderElectionRenewDeadline time.Duration
 	// LeaderElectionRetryPeriod is the duration of the leader election lease retry period.
 	LeaderElectionRetryPeriod time.Duration
+	// DisableCache disables the cache.
+	DisableCache bool
 }
 
 // Provider is the storage provider implementation for Kubernetes.
@@ -102,6 +104,7 @@ func New(options Options) (*Provider, error) {
 		MetricsPort:     options.MetricsPort,
 		ProbePort:       options.ProbePort,
 		ShutdownTimeout: options.ShutdownTimeout,
+		DisableCache:    options.DisableCache,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create controller manager: %w", err)
@@ -117,6 +120,7 @@ func NewObserverWithConfig(cfg *rest.Config, options Options) (*Provider, error)
 		MetricsPort:     options.MetricsPort,
 		ProbePort:       options.ProbePort,
 		ShutdownTimeout: options.ShutdownTimeout,
+		DisableCache:    options.DisableCache,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create controller manager: %w", err)
@@ -274,6 +278,11 @@ func (p *Provider) StartManaged(ctx context.Context) error {
 		go p.RunLeaderElection(ctx)
 	}
 	return nil
+}
+
+// WaitForCacheSync wait for the cache to sync.
+func (p *Provider) WaitForCacheSync(ctx context.Context) bool {
+	return p.mgr.GetCache().WaitForCacheSync(ctx)
 }
 
 // StartUnmanaged starts the provider assuming it does not control the controller manager.
