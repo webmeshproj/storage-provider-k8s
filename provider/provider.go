@@ -124,24 +124,6 @@ func NewObserverWithConfig(cfg *rest.Config, options Options) (*Provider, error)
 	return NewObserverWithManager(mgr, options)
 }
 
-// NewObserverWithManager creates an observing storage provider with the given manager.
-func NewObserverWithManager(mgr manager.Manager, options Options) (*Provider, error) {
-	p := &Provider{
-		Options: options,
-		mgr:     mgr,
-		subs:    make(map[string]Subscription),
-		errc:    make(chan error, 1),
-		log:     ctrl.Log.WithName("storage-provider"),
-	}
-	p.storage = &Storage{Provider: p}
-	p.consensus = &Consensus{provider: p, isObserver: true}
-	err := p.setupWithManager(mgr, options, true)
-	if err != nil {
-		return nil, fmt.Errorf("setup provider with manager: %w", err)
-	}
-	return p, nil
-}
-
 // NewWithManager creates a new Provider with the given manager.
 func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 	p := &Provider{
@@ -149,11 +131,29 @@ func NewWithManager(mgr manager.Manager, options Options) (*Provider, error) {
 		mgr:     mgr,
 		subs:    make(map[string]Subscription),
 		errc:    make(chan error, 1),
-		log:     ctrl.Log.WithName("storage-provider"),
+		log:     ctrl.Log.WithName("storage-provider").WithValues("voter", true, "node-id", options.NodeID),
 	}
 	p.storage = &Storage{Provider: p}
 	p.consensus = &Consensus{provider: p, isObserver: false}
 	err := p.setupWithManager(mgr, options, false)
+	if err != nil {
+		return nil, fmt.Errorf("setup provider with manager: %w", err)
+	}
+	return p, nil
+}
+
+// NewObserverWithManager creates an observing storage provider with the given manager.
+func NewObserverWithManager(mgr manager.Manager, options Options) (*Provider, error) {
+	p := &Provider{
+		Options: options,
+		mgr:     mgr,
+		subs:    make(map[string]Subscription),
+		errc:    make(chan error, 1),
+		log:     ctrl.Log.WithName("storage-provider").WithValues("observer", true, "node-id", options.NodeID),
+	}
+	p.storage = &Storage{Provider: p}
+	p.consensus = &Consensus{provider: p, isObserver: true}
+	err := p.setupWithManager(mgr, options, true)
 	if err != nil {
 		return nil, fmt.Errorf("setup provider with manager: %w", err)
 	}
