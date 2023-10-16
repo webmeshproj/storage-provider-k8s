@@ -270,7 +270,9 @@ func (p *Provider) StartManaged(ctx context.Context) error {
 		}
 	}()
 	// Start the leader elector
-	go p.RunLeaderElection(ctx)
+	if !p.consensus.isObserver {
+		go p.RunLeaderElection(ctx)
+	}
 	return nil
 }
 
@@ -283,7 +285,9 @@ func (p *Provider) StartUnmanaged(ctx context.Context) error {
 	}
 	defer p.started.Store(true)
 	ctx, p.stop = context.WithCancel(ctx)
-	go p.RunLeaderElection(ctx)
+	if !p.consensus.isObserver {
+		go p.RunLeaderElection(ctx)
+	}
 	return nil
 }
 
