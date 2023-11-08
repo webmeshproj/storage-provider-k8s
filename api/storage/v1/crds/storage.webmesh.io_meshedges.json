@@ -31,7 +31,7 @@
                 "additionalProperties": {
                   "type": "string"
                 },
-                "description": "attributes is a list of attributes for the edge.",
+                "description": "Attributes is a list of attributes for the edge.",
                 "type": "object"
               },
               "kind": {
@@ -42,15 +42,15 @@
                 "type": "object"
               },
               "source": {
-                "description": "source is the source node.",
+                "description": "Source is the source node.",
                 "type": "string"
               },
               "target": {
-                "description": "target is the target node.",
+                "description": "Target is the target node.",
                 "type": "string"
               },
               "weight": {
-                "description": "weight is the weight of the edge.",
+                "description": "Weight is the weight of the edge.",
                 "format": "int32",
                 "type": "integer"
               }

@@ -35,20 +35,20 @@
                 "type": "object"
               },
               "name": {
-                "description": "name is the name of the group.",
+                "description": "Name is the name of the group.",
                 "type": "string"
               },
               "subjects": {
-                "description": "subjects is the list of subjects in the group.",
+                "description": "Subjects is the list of subjects in the group.",
                 "items": {
                   "description": "Subject is a subject to which a role can be bound.",
                   "properties": {
                     "name": {
-                      "description": "name is the name of the subject.",
+                      "description": "Name is the name of the subject.",
                       "type": "string"
                     },
                     "type": {
-                      "description": "type is the type of the subject.",
+                      "description": "Type is the type of the subject.",
                       "format": "int32",
                       "type": "integer"
                     }

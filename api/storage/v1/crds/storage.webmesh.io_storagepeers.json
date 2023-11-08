@@ -48,7 +48,7 @@
                 "type": "object"
               },
               "publicKey": {
-                "description": "public_key is the encoded public key of the server. This is not required for demotion or removal RPCs. Not all implementations need to support this.",
+                "description": "PublicKey is the encoded public key of the server. This is not required for demotion or removal RPCs. Not all implementations need to support this.",
                 "type": "string"
               }
             },

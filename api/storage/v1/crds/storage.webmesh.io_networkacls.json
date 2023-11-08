@@ -24,7 +24,7 @@
             "description": "NetworkACL is the Schema for the NetworkACLs API.",
             "properties": {
               "action": {
-                "description": "action is the action to take when a request matches the ACL.",
+                "description": "Action is the action to take when a request matches the ACL.",
                 "format": "int32",
                 "type": "integer"
               },
@@ -33,14 +33,14 @@
                 "type": "string"
               },
               "destinationCIDRs": {
-                "description": "destination_cidrs is a list of destination CIDRs to match against. If empty, all CIDRs are matched. If one or more of the CIDRs is '*', all CIDRs are matched.",
+                "description": "DestinationCIDRs is a list of destination CIDRs to match against. If empty, all CIDRs are matched. If one or more of the CIDRs is '*', all CIDRs are matched.",
                 "items": {
                   "type": "string"
                 },
                 "type": "array"
               },
               "destinationNodes": {
-                "description": "destination_nodes is a list of destination nodes to match against. If empty, all nodes are matched. Groups can be specified with the prefix \"group:\". If one or more of the nodes is '*', all nodes are matched.",
+                "description": "DestinationNodes is a list of destination nodes to match against. If empty, all nodes are matched. Groups can be specified with the prefix \"group:\". If one or more of the nodes is '*', all nodes are matched.",
                 "items": {
                   "type": "string"
                 },
@@ -54,23 +54,23 @@
                 "type": "object"
               },
               "name": {
-                "description": "name is the name of the ACL.",
+                "description": "Name is the name of the ACL.",
                 "type": "string"
               },
               "priority": {
-                "description": "priority is the priority of the ACL. ACLs with higher priority are evaluated first.",
+                "description": "Priority is the priority of the ACL. ACLs with higher priority are evaluated first.",
                 "format": "int32",
                 "type": "integer"
               },
               "sourceCIDRs": {
-                "description": "source_cidrs is a list of source CIDRs to match against. If empty, all CIDRs are matched. If one or more of the CIDRs is '*', all CIDRs are matched.",
+                "description": "SourceCIDRs is a list of source CIDRs to match against. If empty, all CIDRs are matched. If one or more of the CIDRs is '*', all CIDRs are matched.",
                 "items": {
                   "type": "string"
                 },
                 "type": "array"
               },
               "sourceNodes": {
-                "description": "source_nodes is a list of source nodes to match against. If empty, all nodes are matched. Groups can be specified with the prefix \"group:\". If one or more of the nodes is '*', all nodes are matched.",
+                "description": "SourceNodes is a list of source nodes to match against. If empty, all nodes are matched. Groups can be specified with the prefix \"group:\". If one or more of the nodes is '*', all nodes are matched.",
                 "items": {
                   "type": "string"
                 },

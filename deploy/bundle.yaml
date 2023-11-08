@@ -27,27 +27,27 @@ spec:
               internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           features:
-            description: features are a list of features and the ports they are advertised
+            description: Features are a list of features and the ports they are advertised
               on.
             items:
               description: FeaturePort describes a feature and the port it is advertised
                 on.
               properties:
                 feature:
-                  description: feature is the feature.
+                  description: Feature is the feature advertised on the port.
                   format: int32
                   type: integer
                 port:
-                  description: port is the port the feature is advertised on.
+                  description: Port is the port the feature is advertised on.
                   format: int32
                   type: integer
               type: object
             type: array
           id:
-            description: id is the ID of the node.
+            description: ID is the ID of the node.
             type: string
           joinedAt:
-            description: joined_at is the time the node joined the cluster.
+            description: JoinedAt is the time the node joined the cluster.
             properties:
               nanos:
                 description: Non-negative fractions of a second at nanosecond resolution.
@@ -70,30 +70,30 @@ spec:
           metadata:
             type: object
           multiaddrs:
-            description: multiaddrs are the multiaddrs of the node.
+            description: Multiaddrs are the multiaddrs of the node.
             items:
               type: string
             type: array
           primaryEndpoint:
-            description: primary_endpoint is the primary endpoint of the node.
+            description: PrimaryEndpoint is the primary endpoint of the node.
             type: string
           privateIPv4:
-            description: private_ipv4 is the private IPv4 address of the node.
+            description: PrivateIPv4 is the private IPv4 address of the node.
             type: string
           privateIPv6:
-            description: private_ipv6 is the private IPv6 address of the node.
+            description: PrivateIPv6 is the private IPv6 address of the node.
             type: string
           publicKey:
-            description: public_key is the public key of the node.
+            description: PublicKey is the public key of the node.
             type: string
           wireguardEndpoints:
-            description: wireguard_endpoints is a list of WireGuard endpoints for
-              the node.
+            description: WireguardEndpoints is a list of WireGuard endpoints for the
+              node.
             items:
               type: string
             type: array
           zoneAwarenessID:
-            description: zone_awareness_id is the zone awareness ID of the node.
+            description: ZoneAwarenessID is the zone awareness ID of the node.
             type: string
         type: object
     served: true
@@ -135,28 +135,28 @@ spec:
           metadata:
             type: object
           name:
-            description: name is the name of the role.
+            description: Name is the name of the role.
             type: string
           rules:
-            description: rules is the list of rules that apply to the role.
+            description: Rules is the list of rules that apply to the role.
             items:
               description: Rule is a rule that applies to a resource.
               properties:
                 resourceNames:
-                  description: resource_names is the list of resource names to which
+                  description: ResourceNames is the list of resource names to which
                     the rule applies.
                   items:
                     type: string
                   type: array
                 resources:
-                  description: resources is the resources to which the rule applies.
+                  description: Resources is the resources to which the rule applies.
                   items:
                     description: RuleResource is the resource type for a rule.
                     format: int32
                     type: integer
                   type: array
                 verbs:
-                  description: verbs is the list of verbs that apply to the resource.
+                  description: Verbs is the list of verbs that apply to the resource.
                   items:
                     description: RuleVerb is the verb type for a rule.
                     format: int32
@@ -204,18 +204,18 @@ spec:
           metadata:
             type: object
           name:
-            description: name is the name of the group.
+            description: Name is the name of the group.
             type: string
           subjects:
-            description: subjects is the list of subjects in the group.
+            description: Subjects is the list of subjects in the group.
             items:
               description: Subject is a subject to which a role can be bound.
               properties:
                 name:
-                  description: name is the name of the subject.
+                  description: Name is the name of the subject.
                   type: string
                 type:
-                  description: type is the type of the subject.
+                  description: Type is the type of the subject.
                   format: int32
                   type: integer
               type: object
@@ -248,7 +248,7 @@ spec:
         description: NetworkACL is the Schema for the NetworkACLs API.
         properties:
           action:
-            description: action is the action to take when a request matches the ACL.
+            description: Action is the action to take when a request matches the ACL.
             format: int32
             type: integer
           apiVersion:
@@ -257,14 +257,14 @@ spec:
               internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           destinationCIDRs:
-            description: destination_cidrs is a list of destination CIDRs to match
+            description: DestinationCIDRs is a list of destination CIDRs to match
               against. If empty, all CIDRs are matched. If one or more of the CIDRs
               is '*', all CIDRs are matched.
             items:
               type: string
             type: array
           destinationNodes:
-            description: destination_nodes is a list of destination nodes to match
+            description: DestinationNodes is a list of destination nodes to match
               against. If empty, all nodes are matched. Groups can be specified with
               the prefix "group:". If one or more of the nodes is '*', all nodes are
               matched.
@@ -279,23 +279,23 @@ spec:
           metadata:
             type: object
           name:
-            description: name is the name of the ACL.
+            description: Name is the name of the ACL.
             type: string
           priority:
-            description: priority is the priority of the ACL. ACLs with higher priority
+            description: Priority is the priority of the ACL. ACLs with higher priority
               are evaluated first.
             format: int32
             type: integer
           sourceCIDRs:
-            description: source_cidrs is a list of source CIDRs to match against.
-              If empty, all CIDRs are matched. If one or more of the CIDRs is '*',
-              all CIDRs are matched.
+            description: SourceCIDRs is a list of source CIDRs to match against. If
+              empty, all CIDRs are matched. If one or more of the CIDRs is '*', all
+              CIDRs are matched.
             items:
               type: string
             type: array
           sourceNodes:
-            description: source_nodes is a list of source nodes to match against.
-              If empty, all nodes are matched. Groups can be specified with the prefix
+            description: SourceNodes is a list of source nodes to match against. If
+              empty, all nodes are matched. Groups can be specified with the prefix
               "group:". If one or more of the nodes is '*', all nodes are matched.
             items:
               type: string
@@ -340,21 +340,21 @@ spec:
           metadata:
             type: object
           name:
-            description: name is the name of the role binding.
+            description: Name is the name of the role binding.
             type: string
           role:
-            description: role is the name of the role to which the binding applies.
+            description: Role is the name of the role to which the binding applies.
             type: string
           subjects:
-            description: subjects is the list of subjects to which the binding applies.
+            description: Subjects is the list of subjects to which the binding applies.
             items:
               description: Subject is a subject to which a role can be bound.
               properties:
                 name:
-                  description: name is the name of the subject.
+                  description: Name is the name of the subject.
                   type: string
                 type:
-                  description: type is the type of the subject.
+                  description: Type is the type of the subject.
                   format: int32
                   type: integer
               type: object
@@ -392,7 +392,7 @@ spec:
               internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           destinationCIDRs:
-            description: destination_cidrs are the destination CIDRs of the route.
+            description: DestinationCIDRs are the destination CIDRs of the route.
             items:
               type: string
             type: array
@@ -404,14 +404,14 @@ spec:
           metadata:
             type: object
           name:
-            description: name is the name of the route.
+            description: Name is the name of the route.
             type: string
           nextHopNode:
-            description: nextHopNode is an optional node that is used as the next
-              hop for the route.
+            description: NextHopNode is an optional node that is used as the next
+              hop for the route. This field is not currentl used.
             type: string
           node:
-            description: node is the node that broadcasts the route. A group can be
+            description: Node is the node that broadcasts the route. A group can be
               specified with the prefix "group:".
             type: string
         type: object
@@ -449,7 +449,7 @@ spec:
           attributes:
             additionalProperties:
               type: string
-            description: attributes is a list of attributes for the edge.
+            description: Attributes is a list of attributes for the edge.
             type: object
           kind:
             description: 'Kind is a string value representing the REST resource this
@@ -459,13 +459,13 @@ spec:
           metadata:
             type: object
           source:
-            description: source is the source node.
+            description: Source is the source node.
             type: string
           target:
-            description: target is the target node.
+            description: Target is the target node.
             type: string
           weight:
-            description: weight is the weight of the edge.
+            description: Weight is the weight of the edge.
             format: int32
             type: integer
         type: object
@@ -565,9 +565,9 @@ spec:
           metadata:
             type: object
           publicKey:
-            description: public_key is the encoded public key of the server. This
-              is not required for demotion or removal RPCs. Not all implementations
-              need to support this.
+            description: PublicKey is the encoded public key of the server. This is
+              not required for demotion or removal RPCs. Not all implementations need
+              to support this.
             type: string
         type: object
     served: true

@@ -25,27 +25,27 @@ spec:
               internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           features:
-            description: features are a list of features and the ports they are advertised
+            description: Features are a list of features and the ports they are advertised
               on.
             items:
               description: FeaturePort describes a feature and the port it is advertised
                 on.
               properties:
                 feature:
-                  description: feature is the feature.
+                  description: Feature is the feature advertised on the port.
                   format: int32
                   type: integer
                 port:
-                  description: port is the port the feature is advertised on.
+                  description: Port is the port the feature is advertised on.
                   format: int32
                   type: integer
               type: object
             type: array
           id:
-            description: id is the ID of the node.
+            description: ID is the ID of the node.
             type: string
           joinedAt:
-            description: joined_at is the time the node joined the cluster.
+            description: JoinedAt is the time the node joined the cluster.
             properties:
               nanos:
                 description: Non-negative fractions of a second at nanosecond resolution.
@@ -68,30 +68,30 @@ spec:
           metadata:
             type: object
           multiaddrs:
-            description: multiaddrs are the multiaddrs of the node.
+            description: Multiaddrs are the multiaddrs of the node.
             items:
               type: string
             type: array
           primaryEndpoint:
-            description: primary_endpoint is the primary endpoint of the node.
+            description: PrimaryEndpoint is the primary endpoint of the node.
             type: string
           privateIPv4:
-            description: private_ipv4 is the private IPv4 address of the node.
+            description: PrivateIPv4 is the private IPv4 address of the node.
             type: string
           privateIPv6:
-            description: private_ipv6 is the private IPv6 address of the node.
+            description: PrivateIPv6 is the private IPv6 address of the node.
             type: string
           publicKey:
-            description: public_key is the public key of the node.
+            description: PublicKey is the public key of the node.
             type: string
           wireguardEndpoints:
-            description: wireguard_endpoints is a list of WireGuard endpoints for
-              the node.
+            description: WireguardEndpoints is a list of WireGuard endpoints for the
+              node.
             items:
               type: string
             type: array
           zoneAwarenessID:
-            description: zone_awareness_id is the zone awareness ID of the node.
+            description: ZoneAwarenessID is the zone awareness ID of the node.
             type: string
         type: object
     served: true

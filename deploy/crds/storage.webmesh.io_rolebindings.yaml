@@ -32,21 +32,21 @@ spec:
           metadata:
             type: object
           name:
-            description: name is the name of the role binding.
+            description: Name is the name of the role binding.
             type: string
           role:
-            description: role is the name of the role to which the binding applies.
+            description: Role is the name of the role to which the binding applies.
             type: string
           subjects:
-            description: subjects is the list of subjects to which the binding applies.
+            description: Subjects is the list of subjects to which the binding applies.
             items:
               description: Subject is a subject to which a role can be bound.
               properties:
                 name:
-                  description: name is the name of the subject.
+                  description: Name is the name of the subject.
                   type: string
                 type:
-                  description: type is the type of the subject.
+                  description: Type is the type of the subject.
                   format: int32
                   type: integer
               type: object

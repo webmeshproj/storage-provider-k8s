@@ -28,7 +28,7 @@
                 "type": "string"
               },
               "destinationCIDRs": {
-                "description": "destination_cidrs are the destination CIDRs of the route.",
+                "description": "DestinationCIDRs are the destination CIDRs of the route.",
                 "items": {
                   "type": "string"
                 },
@@ -42,15 +42,15 @@
                 "type": "object"
               },
               "name": {
-                "description": "name is the name of the route.",
+                "description": "Name is the name of the route.",
                 "type": "string"
               },
               "nextHopNode": {
-                "description": "nextHopNode is an optional node that is used as the next hop for the route.",
+                "description": "NextHopNode is an optional node that is used as the next hop for the route. This field is not currentl used.",
                 "type": "string"
               },
               "node": {
-                "description": "node is the node that broadcasts the route. A group can be specified with the prefix \"group:\".",
+                "description": "Node is the node that broadcasts the route. A group can be specified with the prefix \"group:\".",
                 "type": "string"
               }
             },
