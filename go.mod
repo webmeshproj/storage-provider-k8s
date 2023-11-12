@@ -6,8 +6,8 @@ require (
 	github.com/dominikbraun/graph v0.23.0
 	github.com/go-logr/logr v1.3.0
 	github.com/google/uuid v1.4.0
-	github.com/webmeshproj/api v0.11.2
-	github.com/webmeshproj/webmesh v0.16.3
+	github.com/webmeshproj/api v0.12.2
+	github.com/webmeshproj/webmesh v0.17.0
 	k8s.io/api v0.28.3
 	k8s.io/apiextensions-apiserver v0.28.3
 	k8s.io/apimachinery v0.28.3

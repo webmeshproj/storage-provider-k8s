@@ -276,10 +276,10 @@ github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
-github.com/webmeshproj/api v0.11.2 h1:121MlNlwWNU2II3gF2v9I/x342s/yBKvDs+JqmjKDfY=
-github.com/webmeshproj/api v0.11.2/go.mod h1:xuYk93HM4aZWWlTh96Z2nIg1YhqcRG36nOfcifzHeM4=
-github.com/webmeshproj/webmesh v0.16.3 h1:i/ArnuhF8AzjgPqe4xjz0S2G8UdqwnUbiRLUPa1wnIY=
-github.com/webmeshproj/webmesh v0.16.3/go.mod h1:u/Qq1TNnGNjNyTl0ZDB5ogIdwNe5qe7w4r7WmAd71P4=
+github.com/webmeshproj/api v0.12.2 h1:K5/mZLs//1IscgGvPrkZPRGnXVszIHcEzS03g5CiyJU=
+github.com/webmeshproj/api v0.12.2/go.mod h1:xuYk93HM4aZWWlTh96Z2nIg1YhqcRG36nOfcifzHeM4=
+github.com/webmeshproj/webmesh v0.17.0 h1:LNTPbN16CLNjao3lne2jaf2b8N4pZfzW8loKliLL/qE=
+github.com/webmeshproj/webmesh v0.17.0/go.mod h1:zo8SulJyANYJM41JEJDxae2/azPz1QuhRxwiTsnTzY0=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
